@@ -10,6 +10,8 @@ export async function POST(req: Request, context: { params: Promise<{ roomId: st
     target?: MeasurementTarget | null;
     tool?: "Distance Tool" | "Speed Tool" | "Swept Area Tool";
     timeIntervalSec?: 5 | 10 | 15;
+    thirdLawTool?: "Period Tool" | "Axis Tool";
+    thirdLawOrbit?: "Inner Orbit" | "Middle Orbit" | "Outer Orbit";
   };
 
   if (!body.role || !body.point) {
@@ -20,6 +22,8 @@ export async function POST(req: Request, context: { params: Promise<{ roomId: st
     const room = addMeasurement(roomId, body.role, body.point, body.target ?? null, {
       tool: body.tool === "Speed Tool" || body.tool === "Swept Area Tool" ? body.tool : undefined,
       timeIntervalSec: body.timeIntervalSec,
+      thirdLawTool: body.thirdLawTool,
+      thirdLawOrbit: body.thirdLawOrbit,
     });
     return NextResponse.json({ room });
   } catch (error) {
@@ -43,6 +47,12 @@ export async function POST(req: Request, context: { params: Promise<{ roomId: st
     }
     if (error instanceof Error && error.message === "INVALID_TIME_INTERVAL") {
       return NextResponse.json({ error: "Select a valid time interval." }, { status: 400 });
+    }
+    if (error instanceof Error && error.message === "INVALID_THIRD_LAW_TOOL") {
+      return NextResponse.json({ error: "Select Period Tool or Axis Tool." }, { status: 400 });
+    }
+    if (error instanceof Error && error.message === "INVALID_THIRD_LAW_ORBIT") {
+      return NextResponse.json({ error: "Select a valid third-law orbit." }, { status: 400 });
     }
     return NextResponse.json({ error: "Unable to record measurement." }, { status: 500 });
   }

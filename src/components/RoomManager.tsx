@@ -104,7 +104,12 @@ export function RoomManager({ roomId, role }: RoomManagerProps) {
   const addMeasurement = async (
     point: MeasurementPoint,
     target: MeasurementTarget | null,
-    options?: { tool?: "Speed Tool" | "Swept Area Tool"; timeIntervalSec?: 5 | 10 | 15 },
+    options?: {
+      tool?: "Speed Tool" | "Swept Area Tool";
+      timeIntervalSec?: 5 | 10 | 15;
+      thirdLawTool?: "Period Tool" | "Axis Tool";
+      thirdLawOrbit?: "Inner Orbit" | "Middle Orbit" | "Outer Orbit";
+    },
   ) => {
     const response = await fetch(`/api/rooms/${roomId}/measurements`, {
       method: "POST",
@@ -191,6 +196,7 @@ export function RoomManager({ roomId, role }: RoomManagerProps) {
           role={role}
           currentStage={currentStage}
           measurementRemaining={measurementRemaining}
+          measurements={currentProgress.measurements}
         />
         {WORKFLOW_V2_ENABLED ? (
           <StagePanel

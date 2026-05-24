@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import type { MeasurementPoint, MeasurementTarget, ParticipantRole, SimulationType, Stage } from "@/lib/types";
+import type { MeasurementPoint, MeasurementRecord, MeasurementTarget, ParticipantRole, SimulationType, Stage } from "@/lib/types";
 
 type SimulationRunnerProps = {
   simulation: SimulationType;
@@ -9,11 +9,17 @@ type SimulationRunnerProps = {
   onMeasure: (
     point: MeasurementPoint,
     target: MeasurementTarget | null,
-    options?: { tool?: "Speed Tool" | "Swept Area Tool"; timeIntervalSec?: 5 | 10 | 15 },
+    options?: {
+      tool?: "Speed Tool" | "Swept Area Tool";
+      timeIntervalSec?: 5 | 10 | 15;
+      thirdLawTool?: "Period Tool" | "Axis Tool";
+      thirdLawOrbit?: "Inner Orbit" | "Middle Orbit" | "Outer Orbit";
+    },
   ) => Promise<void>;
   role: ParticipantRole;
   currentStage?: Stage;
   measurementRemaining: number;
+  measurements: MeasurementRecord[];
 };
 
 const simulations: SimulationType[] = ["Kepler First Law", "Kepler Second Law", "Kepler Third Law"];
@@ -33,15 +39,18 @@ export function SimulationRunner({
   role,
   currentStage,
   measurementRemaining,
+  measurements,
 }: SimulationRunnerProps) {
   const [theta, setTheta] = useState(0);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [secondLawTool, setSecondLawTool] = useState<"Speed Tool" | "Swept Area Tool">("Speed Tool");
   const [secondLawTimeInterval, setSecondLawTimeInterval] = useState<5 | 10 | 15>(10);
+  const [thirdLawTool, setThirdLawTool] = useState<"Period Tool" | "Axis Tool">("Period Tool");
+  const [thirdLawOrbit, setThirdLawOrbit] = useState<"Inner Orbit" | "Middle Orbit" | "Outer Orbit">("Inner Orbit");
   const [measureError, setMeasureError] = useState("");
 
   useEffect(() => {
-    if (simulation !== "Kepler First Law" && simulation !== "Kepler Second Law") return;
+    if (simulation !== "Kepler First Law" && simulation !== "Kepler Second Law" && simulation !== "Kepler Third Law") return;
 
     const timer = setInterval(() => {
       setTheta((prev) => (prev + 0.02) % (Math.PI * 2));
@@ -99,6 +108,51 @@ export function SimulationRunner({
 
     return { cx, cy, a, b, focusLeftX, x, y, checkpoints };
   }, [theta]);
+
+  const secondLawAreaVisuals = useMemo(() => {
+    if (simulation !== "Kepler Second Law") return [];
+    const angleByPoint: Record<MeasurementPoint, number> = {
+      L1: (5 * Math.PI) / 6,
+      L2: Math.PI,
+      L3: (7 * Math.PI) / 6,
+      R1: -Math.PI / 6,
+      R2: 0,
+      R3: Math.PI / 6,
+    };
+    const colors = ["#60a5fa66", "#34d39966", "#f59e0b66", "#f472b666", "#a78bfa66", "#22d3ee66"];
+
+    const makeSectorPath = (start: number, end: number) => {
+      const samples = 18;
+      const points: Array<{ x: number; y: number }> = [];
+      for (let i = 0; i <= samples; i += 1) {
+        const t = start + ((end - start) * i) / samples;
+        points.push({
+          x: secondLawState.cx + secondLawState.a * Math.cos(t),
+          y: secondLawState.cy + secondLawState.b * Math.sin(t),
+        });
+      }
+      const head = points[0];
+      if (!head) return "";
+      const curve = points.map((p) => `L ${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(" ");
+      return `M ${secondLawState.focusLeftX.toFixed(1)} ${secondLawState.cy.toFixed(1)} ${curve} Z`;
+    };
+
+    return measurements
+      .filter((m) => m.tool === "Swept Area Tool" && m.timeIntervalSec && m.value !== undefined && m.point in angleByPoint)
+      .map((m, idx) => {
+        const startAngle = angleByPoint[m.point];
+        const startX = secondLawState.cx + secondLawState.a * Math.cos(startAngle);
+        const startY = secondLawState.cy + secondLawState.b * Math.sin(startAngle);
+        const rf = Math.hypot(startX - secondLawState.focusLeftX, startY - secondLawState.cy);
+        const delta = Math.max(0.04, Math.min(2.2, (2 * m.value!) / Math.max(1, rf * rf)));
+        const endAngle = startAngle + delta;
+        return {
+          id: m.id,
+          path: makeSectorPath(startAngle, endAngle),
+          fill: colors[idx % colors.length] ?? "#60a5fa66",
+        };
+      });
+  }, [measurements, secondLawState, simulation]);
 
   const canAccessSide = (side: OrbitPoint["side"]) => {
     if (side === "neutral") return true;
@@ -160,6 +214,20 @@ export function SimulationRunner({
       setMeasureError("Reactor measurement energy is depleted. No measurements remaining.");
       return;
     }
+    if (simulation === "Kepler Third Law") {
+      setMeasureError("");
+      const point: MeasurementPoint =
+        thirdLawOrbit === "Inner Orbit" ? "L1" : thirdLawOrbit === "Middle Orbit" ? "L2" : "L3";
+      try {
+        await onMeasure(point, null, {
+          thirdLawTool,
+          thirdLawOrbit,
+        });
+      } catch (error) {
+        setMeasureError(error instanceof Error ? error.message : "Measurement failed.");
+      }
+      return;
+    }
     if (!selectedMeasurement) {
       setMeasureError(
         simulation === "Kepler Second Law"
@@ -172,7 +240,10 @@ export function SimulationRunner({
     try {
       await onMeasure(selectedMeasurement.point, selectedMeasurement.target, {
         tool: simulation === "Kepler Second Law" ? secondLawTool : undefined,
-        timeIntervalSec: simulation === "Kepler Second Law" ? secondLawTimeInterval : undefined,
+        timeIntervalSec:
+          simulation === "Kepler Second Law" && secondLawTool === "Swept Area Tool" ? secondLawTimeInterval : undefined,
+        thirdLawTool: simulation === "Kepler Third Law" ? thirdLawTool : undefined,
+        thirdLawOrbit: simulation === "Kepler Third Law" ? thirdLawOrbit : undefined,
       });
       setSelectedIds([]);
     } catch (error) {
@@ -310,16 +381,18 @@ export function SimulationRunner({
               <option value="Speed Tool">Speed Tool</option>
               <option value="Swept Area Tool">Swept Area Tool</option>
             </select>
-            <select
-              value={String(secondLawTimeInterval)}
-              onChange={(e) => setSecondLawTimeInterval(Number(e.target.value) as 5 | 10 | 15)}
-              disabled={currentStage !== "Investigation"}
-              className="rounded border border-slate-300 bg-white px-2 py-1 text-xs text-slate-700 disabled:bg-slate-100"
-            >
-              <option value="5">5s</option>
-              <option value="10">10s</option>
-              <option value="15">15s</option>
-            </select>
+            {secondLawTool === "Swept Area Tool" ? (
+              <select
+                value={String(secondLawTimeInterval)}
+                onChange={(e) => setSecondLawTimeInterval(Number(e.target.value) as 5 | 10 | 15)}
+                disabled={currentStage !== "Investigation"}
+                className="rounded border border-slate-300 bg-white px-2 py-1 text-xs text-slate-700 disabled:bg-slate-100"
+              >
+                <option value="5">5s</option>
+                <option value="10">10s</option>
+                <option value="15">15s</option>
+              </select>
+            ) : null}
             <button
               disabled={currentStage !== "Investigation" || measurementRemaining <= 0}
               onClick={() => void measureSelected()}
@@ -336,7 +409,8 @@ export function SimulationRunner({
             </button>
             {selectedMeasurement ? (
               <span className="text-xs text-slate-600">
-                Ready: {selectedMeasurement.point} | {secondLawTool} | {secondLawTimeInterval}s
+                Ready: {selectedMeasurement.point} | {secondLawTool}
+                {secondLawTool === "Swept Area Tool" ? ` | ${secondLawTimeInterval}s` : ""}
               </span>
             ) : (
               <span className="text-xs text-slate-600">Select 1 side point to run the selected tool.</span>
@@ -356,6 +430,9 @@ export function SimulationRunner({
               strokeDasharray="6 4"
             />
             <circle cx={secondLawState.focusLeftX} cy={secondLawState.cy} r="12" fill="#f59e0b" />
+            {secondLawAreaVisuals.map((area) => (
+              <path key={area.id} d={area.path} fill={area.fill} stroke="#64748b" strokeWidth="0.8" />
+            ))}
             <circle cx={secondLawState.x} cy={secondLawState.y} r="7" fill="#2563eb" />
             <text x={secondLawState.x + 10} y={secondLawState.y - 8} fontSize="12" fill="#1e293b">
               Exoplanet
@@ -400,6 +477,66 @@ export function SimulationRunner({
           </p>
           <p className="mt-1 text-xs text-slate-600">
             Choose a tool and time interval, then measure one accessible side point.
+          </p>
+          {currentStage !== "Investigation" ? (
+            <p className="mt-1 text-xs text-amber-700">Measurements unlock when stage reaches Investigation.</p>
+          ) : null}
+          {currentStage === "Investigation" && measurementRemaining <= 0 ? (
+            <p className="mt-1 text-xs text-amber-700">
+              Measurement limit reached. Discuss with your partner and continue analysis with existing data.
+            </p>
+          ) : null}
+          {measureError ? <p className="mt-1 text-xs text-red-600">{measureError}</p> : null}
+        </div>
+      ) : simulation === "Kepler Third Law" ? (
+        <div className="mt-4 rounded-md border border-slate-300 bg-white p-3">
+          <div className="mb-2 flex items-center gap-2 text-sm">
+            <select
+              value={thirdLawOrbit}
+              onChange={(e) => setThirdLawOrbit(e.target.value as "Inner Orbit" | "Middle Orbit" | "Outer Orbit")}
+              disabled={currentStage !== "Investigation"}
+              className="rounded border border-slate-300 bg-white px-2 py-1 text-xs text-slate-700 disabled:bg-slate-100"
+            >
+              <option value="Inner Orbit">Inner Orbit</option>
+              <option value="Middle Orbit">Middle Orbit</option>
+              <option value="Outer Orbit">Outer Orbit</option>
+            </select>
+            <select
+              value={thirdLawTool}
+              onChange={(e) => setThirdLawTool(e.target.value as "Period Tool" | "Axis Tool")}
+              disabled={currentStage !== "Investigation"}
+              className="rounded border border-slate-300 bg-white px-2 py-1 text-xs text-slate-700 disabled:bg-slate-100"
+            >
+              <option value="Period Tool">Period Tool</option>
+              <option value="Axis Tool">Axis Tool</option>
+            </select>
+            <button
+              disabled={currentStage !== "Investigation" || measurementRemaining <= 0}
+              onClick={() => void measureSelected()}
+              className="rounded border border-slate-900 bg-slate-900 px-3 py-1.5 text-xs text-white disabled:cursor-not-allowed disabled:border-slate-300 disabled:bg-slate-200 disabled:text-slate-500"
+            >
+              Measure
+            </button>
+            <span className="text-xs text-slate-600">
+              Ready: {thirdLawOrbit} | {thirdLawTool}
+            </span>
+            <span className="text-xs font-medium text-slate-700">Energy: {measurementRemaining}/6</span>
+          </div>
+          <svg viewBox="0 0 440 260" className="h-[240px] w-full">
+            <rect x="0" y="0" width="440" height="260" fill="#f8fafc" />
+            <circle cx="220" cy="130" r="11" fill="#f59e0b" />
+            <ellipse cx="220" cy="130" rx="70" ry="64" fill="none" stroke="#60a5fa" strokeWidth="2" strokeDasharray="5 4" />
+            <ellipse cx="220" cy="130" rx="105" ry="95" fill="none" stroke="#34d399" strokeWidth="2" strokeDasharray="5 4" />
+            <ellipse cx="220" cy="130" rx="140" ry="124" fill="none" stroke="#f59e0b" strokeWidth="2" strokeDasharray="5 4" />
+            <circle cx={220 + 70 * Math.cos(theta * 1.4)} cy={130 + 64 * Math.sin(theta * 1.4)} r="5" fill="#2563eb" />
+            <circle cx={220 + 105 * Math.cos(theta)} cy={130 + 95 * Math.sin(theta)} r="5.5" fill="#0f766e" />
+            <circle cx={220 + 140 * Math.cos(theta * 0.72)} cy={130 + 124 * Math.sin(theta * 0.72)} r="6" fill="#b45309" />
+            <text x="295" y="70" fontSize="10" fill="#1e293b">Inner Orbit</text>
+            <text x="328" y="114" fontSize="10" fill="#1e293b">Middle Orbit</text>
+            <text x="352" y="130" fontSize="10" fill="#1e293b">Outer Orbit</text>
+          </svg>
+          <p className="mt-2 text-xs text-slate-600">
+            Measure period and semi-major axis across multiple orbits, then compare whether P² scales with a³.
           </p>
           {currentStage !== "Investigation" ? (
             <p className="mt-1 text-xs text-amber-700">Measurements unlock when stage reaches Investigation.</p>

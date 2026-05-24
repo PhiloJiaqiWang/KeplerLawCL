@@ -246,33 +246,33 @@ const computeFixedDistance = (from: MeasurementPoint, to: MeasurementTarget): nu
 const secondLawTimeIntervals = [5, 10, 15] as const;
 type SecondLawInterval = (typeof secondLawTimeIntervals)[number];
 type SecondLawTool = "Speed Tool" | "Swept Area Tool";
+type ThirdLawTool = "Period Tool" | "Axis Tool";
+type ThirdLawOrbit = "Inner Orbit" | "Middle Orbit" | "Outer Orbit";
 
 const secondLawBaseSpeedByPoint: Record<MeasurementPoint, number> = {
-  L1: 6.2,
-  L2: 6.8,
-  L3: 7.4,
-  R1: 8.2,
-  R2: 7.7,
-  R3: 7.1,
+  L1: 8.1,
+  L2: 8.6,
+  L3: 8.0,
+  R1: 6.9,
+  R2: 6.5,
+  R3: 7.0,
 };
 
 const secondLawAreaRate = 2.48;
-const secondLawAreaOffsetByPoint: Record<MeasurementPoint, number> = {
-  L1: -0.2,
-  L2: 0.1,
-  L3: -0.1,
-  R1: 0.0,
-  R2: -0.2,
-  R3: 0.2,
-};
 
 const computeSecondLawSpeed = (point: MeasurementPoint, interval: SecondLawInterval): number => {
   const intervalFactor = interval === 5 ? 0.98 : interval === 15 ? 1.02 : 1;
   return Number((secondLawBaseSpeedByPoint[point] * intervalFactor).toFixed(2));
 };
 
-const computeSecondLawSweptArea = (point: MeasurementPoint, interval: SecondLawInterval): number =>
-  Number((secondLawAreaRate * interval + secondLawAreaOffsetByPoint[point]).toFixed(2));
+const computeSecondLawSweptArea = (_point: MeasurementPoint, interval: SecondLawInterval): number =>
+  Number((secondLawAreaRate * interval).toFixed(2));
+
+const thirdLawOrbitData: Record<ThirdLawOrbit, { periodDays: number; semiMajorAxisAU: number }> = {
+  "Inner Orbit": { periodDays: 8.0, semiMajorAxisAU: 60 },
+  "Middle Orbit": { periodDays: 14.7, semiMajorAxisAU: 90 },
+  "Outer Orbit": { periodDays: 24.0, semiMajorAxisAU: 125 },
+};
 
 export const addMeasurement = (
   roomId: string,
@@ -282,6 +282,8 @@ export const addMeasurement = (
   options?: {
     tool?: SecondLawTool;
     timeIntervalSec?: SecondLawInterval;
+    thirdLawTool?: ThirdLawTool;
+    thirdLawOrbit?: ThirdLawOrbit;
   },
 ): RoomState => {
   const room = createOrGetRoom(roomId);
@@ -293,6 +295,42 @@ export const addMeasurement = (
   }
   if (progress.measurements.length >= MAX_MEASUREMENTS_PER_SIMULATION) {
     throw new Error("ENERGY_DEPLETED");
+  }
+
+  if (simulation === "Kepler Third Law") {
+    const tool = options?.thirdLawTool;
+    const orbit = options?.thirdLawOrbit;
+    if (!tool || (tool !== "Period Tool" && tool !== "Axis Tool")) {
+      throw new Error("INVALID_THIRD_LAW_TOOL");
+    }
+    if (!orbit || !(orbit in thirdLawOrbitData)) {
+      throw new Error("INVALID_THIRD_LAW_ORBIT");
+    }
+    const sourcePoint: MeasurementPoint =
+      orbit === "Inner Orbit" ? "L1" : orbit === "Middle Orbit" ? "L2" : "L3";
+    const orbitData = thirdLawOrbitData[orbit];
+    const value = tool === "Period Tool" ? orbitData.periodDays : orbitData.semiMajorAxisAU;
+    const valueUnit = tool === "Period Tool" ? "days" : "AU";
+
+    progress.measurements.push({
+      id: randomUUID(),
+      role,
+      point: sourcePoint,
+      target: null,
+      distance: 0,
+      tool,
+      orbitLabel: orbit,
+      value,
+      valueUnit,
+      createdAt: new Date().toISOString(),
+    });
+    room.eventLogs.push({
+      id: randomUUID(),
+      type: "ROOM",
+      message: `${role} measured ${tool} on ${orbit}: ${value.toFixed(2)} ${valueUnit}`,
+      createdAt: new Date().toISOString(),
+    });
+    return room;
   }
 
   const side = pointSides[point];
@@ -309,12 +347,13 @@ export const addMeasurement = (
     if (!tool || (tool !== "Speed Tool" && tool !== "Swept Area Tool")) {
       throw new Error("INVALID_SECOND_LAW_TOOL");
     }
-    if (!interval || !secondLawTimeIntervals.includes(interval)) {
+    if (tool === "Swept Area Tool" && (!interval || !secondLawTimeIntervals.includes(interval))) {
       throw new Error("INVALID_TIME_INTERVAL");
     }
 
     if (tool === "Speed Tool") {
-      const speed = computeSecondLawSpeed(point, interval);
+      const speedInterval: SecondLawInterval = interval ?? 10;
+      const speed = computeSecondLawSpeed(point, speedInterval);
       progress.measurements.push({
         id: randomUUID(),
         role,
@@ -322,7 +361,7 @@ export const addMeasurement = (
         target: null,
         distance: 0,
         tool,
-        timeIntervalSec: interval,
+        timeIntervalSec: speedInterval,
         value: speed,
         valueUnit: "u/s",
         createdAt: new Date().toISOString(),
@@ -330,12 +369,15 @@ export const addMeasurement = (
       room.eventLogs.push({
         id: randomUUID(),
         type: "ROOM",
-        message: `${role} measured speed at ${point} (${interval}s): ${speed.toFixed(2)} u/s`,
+        message: `${role} measured speed at ${point} (${speedInterval}s): ${speed.toFixed(2)} u/s`,
         createdAt: new Date().toISOString(),
       });
       return room;
     }
 
+    if (!interval || !secondLawTimeIntervals.includes(interval)) {
+      throw new Error("INVALID_TIME_INTERVAL");
+    }
     const area = computeSecondLawSweptArea(point, interval);
     progress.measurements.push({
       id: randomUUID(),

@@ -54,6 +54,36 @@ export function StagePanel({
   const completedFocusPairs = focusSumsByPoint.filter((row) => row.hasBoth);
   const hasMinimumEllipseEvidence = completedFocusPairs.length >= 2;
   const myDiscussion = currentProgress.discussionAnswersByRole[role];
+  const discussionQuestion1 =
+    room.currentSimulation === "Kepler Second Law"
+      ? "Based on your measurements, how does speed change when the exoplanet is closer to vs farther from the star?"
+      : room.currentSimulation === "Kepler Third Law"
+        ? "How does orbital period change from inner to outer orbit based on your measurements?"
+      : "Is the orbit more consistent with a circle or ellipse? Why?";
+  const discussionQuestion2 =
+    room.currentSimulation === "Kepler Second Law"
+      ? "For equal time intervals, do the swept areas stay approximately consistent across locations? Which records support your claim?"
+      : room.currentSimulation === "Kepler Third Law"
+        ? "Do your period and semi-major-axis measurements support a P² to a³ relationship? What evidence supports your answer?"
+      : "Which measurements best support your conclusion?";
+  const debriefText =
+    room.currentSimulation === "Kepler Second Law"
+      ? "Kepler's Second Law states that the line joining a planet and its star sweeps out equal areas in equal intervals of time."
+      : room.currentSimulation === "Kepler Third Law"
+        ? "Kepler's Third Law states that the square of orbital period is proportional to the cube of the semi-major axis."
+      : "Kepler's First Law states that a planet orbits its star along an ellipse, with the star at one focus of that ellipse.";
+  const moduleCompleteText =
+    room.currentSimulation === "Kepler Second Law"
+      ? "Module 2 complete for surviving. Your orbital dynamics model has been restored and logged."
+      : room.currentSimulation === "Kepler Third Law"
+        ? "Module 3 complete for surviving. Your orbital scaling model has been restored and logged."
+      : "Module 1 complete for surviving. Your orbital reasoning model has been restored and logged.";
+  const moduleCompleteLabel =
+    room.currentSimulation === "Kepler Second Law"
+      ? "Kepler Second Law module is finished. Debrief mode is active."
+      : room.currentSimulation === "Kepler Third Law"
+        ? "Kepler Third Law module is finished. Debrief mode is active."
+      : "Kepler First Law module is finished. Debrief mode is active.";
 
   const status = useMemo(
     () => [
@@ -127,9 +157,7 @@ export function StagePanel({
         <div className="mt-3 rounded-md border border-emerald-300 bg-emerald-50 p-3">
           <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">Status</p>
           <p className="mt-1 text-lg font-semibold text-emerald-800">Module Complete</p>
-          <p className="mt-1 text-sm text-emerald-700">
-            Kepler First Law module is finished. Debrief mode is active.
-          </p>
+          <p className="mt-1 text-sm text-emerald-700">{moduleCompleteLabel}</p>
         </div>
       ) : null}
 
@@ -201,6 +229,24 @@ export function StagePanel({
                   </p>
                 </div>
               ) : null}
+              {room.currentSimulation === "Kepler Third Law" ? (
+                <div className="mt-2 rounded-md border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
+                  <p>NOVA has unlocked multiple orbit tracks around the same star.</p>
+                  <p className="mt-2">
+                    Plan how to compare orbital period and semi-major axis across inner, middle, and outer orbits.
+                  </p>
+                  <p className="mt-2">Before Investigation, align on:</p>
+                  <ul className="mt-1 list-disc pl-5">
+                    <li>which orbit each participant will prioritize</li>
+                    <li>which Period and Axis measurements to collect within the energy limit</li>
+                    <li>how you will test whether period growth matches axis growth nonlinearly</li>
+                  </ul>
+                  <p className="mt-2 font-medium">
+                    Reactor constraint: only 6 total measurements are available. Allocate measurements to maximize
+                    cross-orbit comparison.
+                  </p>
+                </div>
+              ) : null}
               <textarea
                 id="plan-input"
                 value={planText}
@@ -232,6 +278,8 @@ export function StagePanel({
                 <p className="mt-2">
                   {room.currentSimulation === "Kepler Second Law"
                     ? "No measurements yet. Select a side point, tool, and time interval in the simulation, then click Measure."
+                    : room.currentSimulation === "Kepler Third Law"
+                      ? "No measurements yet. Select an orbit and tool in the simulation, then click Measure."
                     : "No measurements yet. Click your side points in the simulation to record fixed distances."}
                 </p>
               ) : (
@@ -247,6 +295,12 @@ export function StagePanel({
                             <>
                               <th className="border-b border-slate-300 px-2 py-1 font-medium text-slate-700">Tool</th>
                               <th className="border-b border-slate-300 px-2 py-1 font-medium text-slate-700">Interval</th>
+                              <th className="border-b border-slate-300 px-2 py-1 font-medium text-slate-700">Value</th>
+                            </>
+                          ) : room.currentSimulation === "Kepler Third Law" ? (
+                            <>
+                              <th className="border-b border-slate-300 px-2 py-1 font-medium text-slate-700">Orbit</th>
+                              <th className="border-b border-slate-300 px-2 py-1 font-medium text-slate-700">Tool</th>
                               <th className="border-b border-slate-300 px-2 py-1 font-medium text-slate-700">Value</th>
                             </>
                           ) : (
@@ -271,6 +325,16 @@ export function StagePanel({
                                 <td className="border-b border-slate-200 px-2 py-1">
                                   {record.timeIntervalSec ? `${record.timeIntervalSec}s` : "-"}
                                 </td>
+                                <td className="border-b border-slate-200 px-2 py-1">
+                                  {record.value !== undefined && record.valueUnit
+                                    ? `${record.value.toFixed(2)} ${record.valueUnit}`
+                                    : "-"}
+                                </td>
+                              </>
+                            ) : room.currentSimulation === "Kepler Third Law" ? (
+                              <>
+                                <td className="border-b border-slate-200 px-2 py-1">{record.orbitLabel ?? "-"}</td>
+                                <td className="border-b border-slate-200 px-2 py-1">{record.tool ?? "-"}</td>
                                 <td className="border-b border-slate-200 px-2 py-1">
                                   {record.value !== undefined && record.valueUnit
                                     ? `${record.value.toFixed(2)} ${record.valueUnit}`
@@ -362,7 +426,7 @@ export function StagePanel({
                   ) : (
                     <form onSubmit={submitDiscussion} className="mt-2 space-y-2">
                       <label className="block">
-                        <span className="text-slate-700">1) Is the orbit more consistent with a circle or ellipse? Why?</span>
+                        <span className="text-slate-700">1) {discussionQuestion1}</span>
                         <textarea
                           value={q1}
                           onChange={(e) => setQ1(e.target.value)}
@@ -371,7 +435,7 @@ export function StagePanel({
                         />
                       </label>
                       <label className="block">
-                        <span className="text-slate-700">2) Which measurements best support your conclusion?</span>
+                        <span className="text-slate-700">2) {discussionQuestion2}</span>
                         <textarea
                           value={q2}
                           onChange={(e) => setQ2(e.target.value)}
@@ -393,13 +457,8 @@ export function StagePanel({
           ) : currentStage === "Submission" ? (
             <div className="rounded border border-slate-300 bg-slate-50 p-3 text-sm text-slate-700">
               <p className="font-medium text-slate-900">NOVA Debrief</p>
-              <p className="mt-2">
-                Kepler&apos;s First Law states that a planet orbits its star along an ellipse, with the star at one
-                focus of that ellipse.
-              </p>
-              <p className="mt-2">
-                Module 1 complete for surviving. Your orbital reasoning model has been restored and logged.
-              </p>
+              <p className="mt-2">{debriefText}</p>
+              <p className="mt-2">{moduleCompleteText}</p>
             </div>
           ) : (
             <p>Planning is complete. Stage-specific tools for {currentStage} will be added next.</p>
