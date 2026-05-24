@@ -13,12 +13,13 @@ type SimulationRunnerProps = {
       tool?: "Speed Tool" | "Swept Area Tool";
       timeIntervalSec?: 5 | 10 | 15;
       thirdLawTool?: "Period Tool" | "Axis Tool";
-      thirdLawOrbit?: "Inner Orbit" | "Middle Orbit" | "Outer Orbit";
+      thirdLawOrbit?: "Orbit 1" | "Orbit 2" | "Orbit 3" | "Orbit 4" | "Orbit 5" | "Orbit 6";
     },
   ) => Promise<void>;
   role: ParticipantRole;
   currentStage?: Stage;
   measurementRemaining: number;
+  maxMeasurements: number;
   measurements: MeasurementRecord[];
 };
 
@@ -39,6 +40,7 @@ export function SimulationRunner({
   role,
   currentStage,
   measurementRemaining,
+  maxMeasurements,
   measurements,
 }: SimulationRunnerProps) {
   const [theta, setTheta] = useState(0);
@@ -46,7 +48,9 @@ export function SimulationRunner({
   const [secondLawTool, setSecondLawTool] = useState<"Speed Tool" | "Swept Area Tool">("Speed Tool");
   const [secondLawTimeInterval, setSecondLawTimeInterval] = useState<5 | 10 | 15>(10);
   const [thirdLawTool, setThirdLawTool] = useState<"Period Tool" | "Axis Tool">("Period Tool");
-  const [thirdLawOrbit, setThirdLawOrbit] = useState<"Inner Orbit" | "Middle Orbit" | "Outer Orbit">("Inner Orbit");
+  const [thirdLawOrbit, setThirdLawOrbit] = useState<
+    "Orbit 1" | "Orbit 2" | "Orbit 3" | "Orbit 4" | "Orbit 5" | "Orbit 6"
+  >("Orbit 1");
   const [measureError, setMeasureError] = useState("");
 
   useEffect(() => {
@@ -217,7 +221,17 @@ export function SimulationRunner({
     if (simulation === "Kepler Third Law") {
       setMeasureError("");
       const point: MeasurementPoint =
-        thirdLawOrbit === "Inner Orbit" ? "L1" : thirdLawOrbit === "Middle Orbit" ? "L2" : "L3";
+        thirdLawOrbit === "Orbit 1"
+          ? "L1"
+          : thirdLawOrbit === "Orbit 2"
+            ? "L2"
+            : thirdLawOrbit === "Orbit 3"
+              ? "L3"
+              : thirdLawOrbit === "Orbit 4"
+                ? "R1"
+                : thirdLawOrbit === "Orbit 5"
+                  ? "R2"
+                  : "R3";
       try {
         await onMeasure(point, null, {
           thirdLawTool,
@@ -302,7 +316,7 @@ export function SimulationRunner({
             ) : (
               <span className="text-xs text-slate-600">Select 2 points to create a measurement link.</span>
             )}
-            <span className="text-xs font-medium text-slate-700">Energy: {measurementRemaining}/6</span>
+            <span className="text-xs font-medium text-slate-700">Energy: {measurementRemaining}/{maxMeasurements}</span>
           </div>
           <svg viewBox="0 0 440 260" className="h-[240px] w-full">
             <rect x="0" y="0" width="440" height="260" fill="#f8fafc" />
@@ -415,7 +429,7 @@ export function SimulationRunner({
             ) : (
               <span className="text-xs text-slate-600">Select 1 side point to run the selected tool.</span>
             )}
-            <span className="text-xs font-medium text-slate-700">Energy: {measurementRemaining}/6</span>
+            <span className="text-xs font-medium text-slate-700">Energy: {measurementRemaining}/{maxMeasurements}</span>
           </div>
           <svg viewBox="0 0 440 260" className="h-[240px] w-full">
             <rect x="0" y="0" width="440" height="260" fill="#f8fafc" />
@@ -493,13 +507,18 @@ export function SimulationRunner({
           <div className="mb-2 flex items-center gap-2 text-sm">
             <select
               value={thirdLawOrbit}
-              onChange={(e) => setThirdLawOrbit(e.target.value as "Inner Orbit" | "Middle Orbit" | "Outer Orbit")}
+              onChange={(e) =>
+                setThirdLawOrbit(e.target.value as "Orbit 1" | "Orbit 2" | "Orbit 3" | "Orbit 4" | "Orbit 5" | "Orbit 6")
+              }
               disabled={currentStage !== "Investigation"}
               className="rounded border border-slate-300 bg-white px-2 py-1 text-xs text-slate-700 disabled:bg-slate-100"
             >
-              <option value="Inner Orbit">Inner Orbit</option>
-              <option value="Middle Orbit">Middle Orbit</option>
-              <option value="Outer Orbit">Outer Orbit</option>
+              <option value="Orbit 1">Orbit 1</option>
+              <option value="Orbit 2">Orbit 2</option>
+              <option value="Orbit 3">Orbit 3</option>
+              <option value="Orbit 4">Orbit 4</option>
+              <option value="Orbit 5">Orbit 5</option>
+              <option value="Orbit 6">Orbit 6</option>
             </select>
             <select
               value={thirdLawTool}
@@ -520,20 +539,29 @@ export function SimulationRunner({
             <span className="text-xs text-slate-600">
               Ready: {thirdLawOrbit} | {thirdLawTool}
             </span>
-            <span className="text-xs font-medium text-slate-700">Energy: {measurementRemaining}/6</span>
+            <span className="text-xs font-medium text-slate-700">Energy: {measurementRemaining}/{maxMeasurements}</span>
           </div>
           <svg viewBox="0 0 440 260" className="h-[240px] w-full">
             <rect x="0" y="0" width="440" height="260" fill="#f8fafc" />
             <circle cx="220" cy="130" r="11" fill="#f59e0b" />
-            <ellipse cx="220" cy="130" rx="70" ry="64" fill="none" stroke="#60a5fa" strokeWidth="2" strokeDasharray="5 4" />
-            <ellipse cx="220" cy="130" rx="105" ry="95" fill="none" stroke="#34d399" strokeWidth="2" strokeDasharray="5 4" />
-            <ellipse cx="220" cy="130" rx="140" ry="124" fill="none" stroke="#f59e0b" strokeWidth="2" strokeDasharray="5 4" />
-            <circle cx={220 + 70 * Math.cos(theta * 1.4)} cy={130 + 64 * Math.sin(theta * 1.4)} r="5" fill="#2563eb" />
-            <circle cx={220 + 105 * Math.cos(theta)} cy={130 + 95 * Math.sin(theta)} r="5.5" fill="#0f766e" />
-            <circle cx={220 + 140 * Math.cos(theta * 0.72)} cy={130 + 124 * Math.sin(theta * 0.72)} r="6" fill="#b45309" />
-            <text x="295" y="70" fontSize="10" fill="#1e293b">Inner Orbit</text>
-            <text x="328" y="114" fontSize="10" fill="#1e293b">Middle Orbit</text>
-            <text x="352" y="130" fontSize="10" fill="#1e293b">Outer Orbit</text>
+            <ellipse cx="220" cy="130" rx="58" ry="52" fill="none" stroke="#60a5fa" strokeWidth="2" strokeDasharray="5 4" />
+            <ellipse cx="220" cy="130" rx="74" ry="66" fill="none" stroke="#38bdf8" strokeWidth="2" strokeDasharray="5 4" />
+            <ellipse cx="220" cy="130" rx="90" ry="80" fill="none" stroke="#34d399" strokeWidth="2" strokeDasharray="5 4" />
+            <ellipse cx="220" cy="130" rx="106" ry="94" fill="none" stroke="#fbbf24" strokeWidth="2" strokeDasharray="5 4" />
+            <ellipse cx="220" cy="130" rx="122" ry="108" fill="none" stroke="#f59e0b" strokeWidth="2" strokeDasharray="5 4" />
+            <ellipse cx="220" cy="130" rx="138" ry="122" fill="none" stroke="#f97316" strokeWidth="2" strokeDasharray="5 4" />
+            <circle cx={220 + 58 * Math.cos(theta * 1.45)} cy={130 + 52 * Math.sin(theta * 1.45)} r="4.6" fill="#2563eb" />
+            <circle cx={220 + 74 * Math.cos(theta * 1.26)} cy={130 + 66 * Math.sin(theta * 1.26)} r="4.9" fill="#0284c7" />
+            <circle cx={220 + 90 * Math.cos(theta * 1.10)} cy={130 + 80 * Math.sin(theta * 1.10)} r="5.1" fill="#0f766e" />
+            <circle cx={220 + 106 * Math.cos(theta * 0.96)} cy={130 + 94 * Math.sin(theta * 0.96)} r="5.3" fill="#ca8a04" />
+            <circle cx={220 + 122 * Math.cos(theta * 0.84)} cy={130 + 108 * Math.sin(theta * 0.84)} r="5.6" fill="#b45309" />
+            <circle cx={220 + 138 * Math.cos(theta * 0.74)} cy={130 + 122 * Math.sin(theta * 0.74)} r="5.8" fill="#c2410c" />
+            <text x="282" y="70" fontSize="9" fill="#1e293b">O1</text>
+            <text x="302" y="82" fontSize="9" fill="#1e293b">O2</text>
+            <text x="320" y="95" fontSize="9" fill="#1e293b">O3</text>
+            <text x="336" y="108" fontSize="9" fill="#1e293b">O4</text>
+            <text x="350" y="123" fontSize="9" fill="#1e293b">O5</text>
+            <text x="362" y="138" fontSize="9" fill="#1e293b">O6</text>
           </svg>
           <p className="mt-2 text-xs text-slate-600">
             Measure period and semi-major axis across multiple orbits, then compare whether P² scales with a³.

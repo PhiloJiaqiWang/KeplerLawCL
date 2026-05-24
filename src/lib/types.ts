@@ -44,10 +44,10 @@ export type MeasurementRecord = {
   target: MeasurementTarget | null;
   distance: number;
   tool?: "Distance Tool" | "Speed Tool" | "Swept Area Tool" | "Period Tool" | "Axis Tool";
-  orbitLabel?: "Inner Orbit" | "Middle Orbit" | "Outer Orbit";
+  orbitLabel?: "Orbit 1" | "Orbit 2" | "Orbit 3" | "Orbit 4" | "Orbit 5" | "Orbit 6";
   timeIntervalSec?: 5 | 10 | 15;
   value?: number;
-  valueUnit?: "u/s" | "u^2" | "days" | "AU";
+  valueUnit?: "u/s" | "u^2" | "days" | "years" | "AU";
   createdAt: string;
 };
 

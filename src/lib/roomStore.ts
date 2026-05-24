@@ -10,10 +10,15 @@ import {
   type Stage,
   type SimulationType,
 } from "@/lib/types";
+import {
+  DEFAULT_MAX_MEASUREMENTS as MAX_MEASUREMENTS_PER_SIMULATION,
+  THIRD_LAW_MAX_MEASUREMENTS as MAX_MEASUREMENTS_THIRD_LAW,
+  getMaxMeasurementsForSimulation,
+} from "@/lib/measurementLimits";
 
 const rooms = new Map<string, RoomState>();
 const initialStage: Stage = "Planning";
-export const MAX_MEASUREMENTS_PER_SIMULATION = 6;
+export { MAX_MEASUREMENTS_PER_SIMULATION, MAX_MEASUREMENTS_THIRD_LAW, getMaxMeasurementsForSimulation };
 
 const createInitialProgress = (): RoomState["progressBySimulation"] => ({
   "Kepler First Law": {
@@ -247,7 +252,7 @@ const secondLawTimeIntervals = [5, 10, 15] as const;
 type SecondLawInterval = (typeof secondLawTimeIntervals)[number];
 type SecondLawTool = "Speed Tool" | "Swept Area Tool";
 type ThirdLawTool = "Period Tool" | "Axis Tool";
-type ThirdLawOrbit = "Inner Orbit" | "Middle Orbit" | "Outer Orbit";
+type ThirdLawOrbit = "Orbit 1" | "Orbit 2" | "Orbit 3" | "Orbit 4" | "Orbit 5" | "Orbit 6";
 
 const secondLawBaseSpeedByPoint: Record<MeasurementPoint, number> = {
   L1: 8.1,
@@ -269,9 +274,12 @@ const computeSecondLawSweptArea = (_point: MeasurementPoint, interval: SecondLaw
   Number((secondLawAreaRate * interval).toFixed(2));
 
 const thirdLawOrbitData: Record<ThirdLawOrbit, { periodDays: number; semiMajorAxisAU: number }> = {
-  "Inner Orbit": { periodDays: 8.0, semiMajorAxisAU: 60 },
-  "Middle Orbit": { periodDays: 14.7, semiMajorAxisAU: 90 },
-  "Outer Orbit": { periodDays: 24.0, semiMajorAxisAU: 125 },
+  "Orbit 1": { periodDays: 0.35, semiMajorAxisAU: 0.5 },
+  "Orbit 2": { periodDays: 0.72, semiMajorAxisAU: 0.8 },
+  "Orbit 3": { periodDays: 1.0, semiMajorAxisAU: 1.0 },
+  "Orbit 4": { periodDays: 1.84, semiMajorAxisAU: 1.5 },
+  "Orbit 5": { periodDays: 2.83, semiMajorAxisAU: 2.0 },
+  "Orbit 6": { periodDays: 5.2, semiMajorAxisAU: 3.0 },
 };
 
 export const addMeasurement = (
@@ -293,7 +301,8 @@ export const addMeasurement = (
   if (progress.currentStage !== "Investigation") {
     throw new Error("MEASUREMENT_STAGE_LOCKED");
   }
-  if (progress.measurements.length >= MAX_MEASUREMENTS_PER_SIMULATION) {
+  const maxMeasurements = getMaxMeasurementsForSimulation(simulation);
+  if (progress.measurements.length >= maxMeasurements) {
     throw new Error("ENERGY_DEPLETED");
   }
 
@@ -307,10 +316,20 @@ export const addMeasurement = (
       throw new Error("INVALID_THIRD_LAW_ORBIT");
     }
     const sourcePoint: MeasurementPoint =
-      orbit === "Inner Orbit" ? "L1" : orbit === "Middle Orbit" ? "L2" : "L3";
+      orbit === "Orbit 1"
+        ? "L1"
+        : orbit === "Orbit 2"
+          ? "L2"
+          : orbit === "Orbit 3"
+            ? "L3"
+            : orbit === "Orbit 4"
+              ? "R1"
+              : orbit === "Orbit 5"
+                ? "R2"
+                : "R3";
     const orbitData = thirdLawOrbitData[orbit];
     const value = tool === "Period Tool" ? orbitData.periodDays : orbitData.semiMajorAxisAU;
-    const valueUnit = tool === "Period Tool" ? "days" : "AU";
+    const valueUnit = tool === "Period Tool" ? "years" : "AU";
 
     progress.measurements.push({
       id: randomUUID(),

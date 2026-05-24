@@ -9,6 +9,7 @@ import { SimulationRunner } from "@/components/SimulationRunner";
 import { StagePanel } from "@/components/StagePanel";
 import { StagePlaceholder } from "@/components/StagePlaceholder";
 import { WORKFLOW_V2_ENABLED } from "@/lib/flags";
+import { getMaxMeasurementsForSimulation } from "@/lib/measurementLimits";
 import type {
   AgentCondition,
   MeasurementPoint,
@@ -108,7 +109,7 @@ export function RoomManager({ roomId, role }: RoomManagerProps) {
       tool?: "Speed Tool" | "Swept Area Tool";
       timeIntervalSec?: 5 | 10 | 15;
       thirdLawTool?: "Period Tool" | "Axis Tool";
-      thirdLawOrbit?: "Inner Orbit" | "Middle Orbit" | "Outer Orbit";
+      thirdLawOrbit?: "Orbit 1" | "Orbit 2" | "Orbit 3" | "Orbit 4" | "Orbit 5" | "Orbit 6";
     },
   ) => {
     const response = await fetch(`/api/rooms/${roomId}/measurements`, {
@@ -154,7 +155,7 @@ export function RoomManager({ roomId, role }: RoomManagerProps) {
   }
   const currentStage = room.progressBySimulation[room.currentSimulation].currentStage;
   const currentProgress = room.progressBySimulation[room.currentSimulation];
-  const maxMeasurements = 6;
+  const maxMeasurements = getMaxMeasurementsForSimulation(room.currentSimulation);
   const measurementRemaining = Math.max(0, maxMeasurements - currentProgress.measurements.length);
   const displayNameByRole: Record<ParticipantRole, string> = {
     participantA: room.participantA?.name ?? "Participant A",
@@ -196,6 +197,7 @@ export function RoomManager({ roomId, role }: RoomManagerProps) {
           role={role}
           currentStage={currentStage}
           measurementRemaining={measurementRemaining}
+          maxMeasurements={maxMeasurements}
           measurements={currentProgress.measurements}
         />
         {WORKFLOW_V2_ENABLED ? (

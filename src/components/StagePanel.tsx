@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { getMaxMeasurementsForSimulation } from "@/lib/measurementLimits";
 import { STAGE_OBJECTIVES_BY_SIMULATION } from "@/lib/workflows";
 import type { ParticipantRole, RoomState } from "@/lib/types";
 
@@ -23,13 +24,15 @@ export function StagePanel({
   const [q1, setQ1] = useState("");
   const [q2, setQ2] = useState("");
   const [showProceedWarning, setShowProceedWarning] = useState(false);
+  const [thirdLawXPower, setThirdLawXPower] = useState<1 | 2 | 3>(3);
+  const [thirdLawYPower, setThirdLawYPower] = useState<1 | 2 | 3>(2);
   const [isProceeding, setIsProceeding] = useState(false);
   const [isSubmittingDiscussion, setIsSubmittingDiscussion] = useState(false);
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const currentProgress = room.progressBySimulation[room.currentSimulation];
   const currentStage = currentProgress.currentStage;
-  const maxMeasurements = 6;
+  const maxMeasurements = getMaxMeasurementsForSimulation(room.currentSimulation);
   const measurementRemaining = Math.max(0, maxMeasurements - currentProgress.measurements.length);
 
   const myPlan = currentProgress.planByRole[role];
@@ -53,7 +56,70 @@ export function StagePanel({
 
   const completedFocusPairs = focusSumsByPoint.filter((row) => row.hasBoth);
   const hasMinimumEllipseEvidence = completedFocusPairs.length >= 2;
+  const thirdLawOrbitSummary = useMemo(() => {
+    const orbitOrder: Array<"Orbit 1" | "Orbit 2" | "Orbit 3" | "Orbit 4" | "Orbit 5" | "Orbit 6"> = [
+      "Orbit 1",
+      "Orbit 2",
+      "Orbit 3",
+      "Orbit 4",
+      "Orbit 5",
+      "Orbit 6",
+    ];
+    const latestByOrbit = new Map<
+      "Orbit 1" | "Orbit 2" | "Orbit 3" | "Orbit 4" | "Orbit 5" | "Orbit 6",
+      { period?: number; axis?: number }
+    >();
+
+    for (const orbit of orbitOrder) {
+      latestByOrbit.set(orbit, {});
+    }
+
+    for (const record of measurementRows) {
+      if (!record.orbitLabel || !orbitOrder.includes(record.orbitLabel)) continue;
+      if (record.value === undefined) continue;
+      const current = latestByOrbit.get(record.orbitLabel) ?? {};
+      if (record.tool === "Period Tool") current.period = record.value;
+      if (record.tool === "Axis Tool") current.axis = record.value;
+      latestByOrbit.set(record.orbitLabel, current);
+    }
+
+    return orbitOrder.map((orbit) => {
+      const v = latestByOrbit.get(orbit) ?? {};
+      const p2 = v.period !== undefined ? Number((v.period * v.period).toFixed(2)) : null;
+      const a3 = v.axis !== undefined ? Number((v.axis * v.axis * v.axis).toFixed(2)) : null;
+      return { orbit, period: v.period ?? null, axis: v.axis ?? null, p2, a3 };
+    });
+  }, [measurementRows]);
+  const thirdLawPlotPoints = useMemo(() => {
+    const valid = thirdLawOrbitSummary
+      .filter((row) => row.period !== null && row.axis !== null)
+      .map((row) => {
+        const axis = row.axis as number;
+        const period = row.period as number;
+        const xValue = Number(axis ** thirdLawXPower);
+        const yValue = Number(period ** thirdLawYPower);
+        return { ...row, xValue, yValue };
+      });
+    if (valid.length === 0) return [];
+    const maxX = Math.max(...valid.map((v) => v.xValue));
+    const maxY = Math.max(...valid.map((v) => v.yValue));
+    const minX = 0;
+    const minY = 0;
+    const width = 300;
+    const height = 160;
+    const pad = 24;
+
+    return valid.map((row) => {
+      const xValue = row.xValue;
+      const yValue = row.yValue;
+      const x = pad + ((xValue - minX) / Math.max(1, maxX - minX)) * (width - pad * 2);
+      const y = height - pad - ((yValue - minY) / Math.max(1, maxY - minY)) * (height - pad * 2);
+      return { ...row, x, y };
+    });
+  }, [thirdLawOrbitSummary, thirdLawXPower, thirdLawYPower]);
   const myDiscussion = currentProgress.discussionAnswersByRole[role];
+  const otherRole: ParticipantRole = role === "participantA" ? "participantB" : "participantA";
+  const otherDiscussion = currentProgress.discussionAnswersByRole[otherRole];
   const discussionQuestion1 =
     room.currentSimulation === "Kepler Second Law"
       ? "Based on your measurements, how does speed change when the exoplanet is closer to vs farther from the star?"
@@ -64,7 +130,7 @@ export function StagePanel({
     room.currentSimulation === "Kepler Second Law"
       ? "For equal time intervals, do the swept areas stay approximately consistent across locations? Which records support your claim?"
       : room.currentSimulation === "Kepler Third Law"
-        ? "Do your period and semi-major-axis measurements support a P² to a³ relationship? What evidence supports your answer?"
+        ? "What relationship did you find from your measurements between orbital period and semi-major axis?"
       : "Which measurements best support your conclusion?";
   const debriefText =
     room.currentSimulation === "Kepler Second Law"
@@ -242,7 +308,7 @@ export function StagePanel({
                     <li>how you will test whether period growth matches axis growth nonlinearly</li>
                   </ul>
                   <p className="mt-2 font-medium">
-                    Reactor constraint: only 6 total measurements are available. Allocate measurements to maximize
+                    Reactor constraint: 12 total measurements are available in this module. Allocate measurements to maximize
                     cross-orbit comparison.
                   </p>
                 </div>
@@ -271,9 +337,14 @@ export function StagePanel({
             <>
               <p className="font-medium text-slate-800">Investigation Measurements</p>
               <p className="mt-1 text-xs text-slate-700">
-                Remaining measurement energy: {measurementRemaining}/6. Coordinate in chat before using the next
+                Remaining measurement energy: {measurementRemaining}/{maxMeasurements}. Coordinate in chat before using the next
                 measurement.
               </p>
+              {room.currentSimulation === "Kepler Third Law" ? (
+                <p className="mt-1 text-xs text-slate-700">
+                  Third Law log supports up to 12 measurements in this module; scroll the table if needed.
+                </p>
+              ) : null}
               {measurementRows.length === 0 ? (
                 <p className="mt-2">
                   {room.currentSimulation === "Kepler Second Law"
@@ -284,7 +355,11 @@ export function StagePanel({
                 </p>
               ) : (
                 <>
-                  <div className="mt-2 max-h-44 overflow-y-auto rounded border border-slate-300">
+                  <div
+                    className={`mt-2 overflow-y-auto rounded border border-slate-300 ${
+                      room.currentSimulation === "Kepler Third Law" ? "max-h-[28rem]" : "max-h-44"
+                    }`}
+                  >
                     <table className="w-full border-collapse text-left text-xs">
                       <thead className="bg-slate-100">
                         <tr>
@@ -397,6 +472,76 @@ export function StagePanel({
                     </p>
                     </div>
                   ) : null}
+                  {room.currentSimulation === "Kepler Third Law" ? (
+                    <div className="mt-3 rounded border border-slate-300 bg-slate-50 p-2 text-xs">
+                      <p className="font-medium text-slate-800">Pattern Plot View</p>
+                      <p className="mt-1 text-slate-700">
+                        Choose powers for each axis. Points appear after both `Period` and `Axis` are measured for an orbit.
+                      </p>
+                      <div className="mt-2 flex flex-wrap items-center gap-2">
+                        <label className="text-xs text-slate-700">
+                          x-axis:
+                          <select
+                            value={String(thirdLawXPower)}
+                            onChange={(e) => setThirdLawXPower(Number(e.target.value) as 1 | 2 | 3)}
+                            className="ml-1 rounded border border-slate-300 bg-white px-1 py-0.5 text-xs"
+                          >
+                            <option value="1">a</option>
+                            <option value="2">a²</option>
+                            <option value="3">a³</option>
+                          </select>
+                        </label>
+                        <label className="text-xs text-slate-700">
+                          y-axis:
+                          <select
+                            value={String(thirdLawYPower)}
+                            onChange={(e) => setThirdLawYPower(Number(e.target.value) as 1 | 2 | 3)}
+                            className="ml-1 rounded border border-slate-300 bg-white px-1 py-0.5 text-xs"
+                          >
+                            <option value="1">P</option>
+                            <option value="2">P²</option>
+                            <option value="3">P³</option>
+                          </select>
+                        </label>
+                      </div>
+                      <div className="mt-2 overflow-x-auto rounded border border-slate-300 bg-white p-2">
+                        <svg viewBox="0 0 300 160" className="h-[160px] w-full min-w-[300px]">
+                          <line x1="24" y1="136" x2="280" y2="136" stroke="#94a3b8" strokeWidth="1.5" />
+                          <line x1="24" y1="136" x2="24" y2="16" stroke="#94a3b8" strokeWidth="1.5" />
+                          <text x="282" y="148" fontSize="10" fill="#475569">{`a${thirdLawXPower === 1 ? "" : thirdLawXPower === 2 ? "²" : "³"}`}</text>
+                          <text x="8" y="14" fontSize="10" fill="#475569">{`P${thirdLawYPower === 1 ? "" : thirdLawYPower === 2 ? "²" : "³"}`}</text>
+                          {thirdLawPlotPoints.map((point) => (
+                            <g key={point.orbit}>
+                              <circle cx={point.x} cy={point.y} r="4.5" fill="#2563eb" />
+                              <text x={point.x + 6} y={point.y - 6} fontSize="9" fill="#1e293b">
+                                {point.orbit.replace(" Orbit", "")}
+                              </text>
+                            </g>
+                          ))}
+                        </svg>
+                      </div>
+                      <div className="mt-2 overflow-x-auto">
+                        <table className="w-full border-collapse text-left">
+                          <thead>
+                            <tr>
+                              <th className="border-b border-slate-300 px-1 py-1">Orbit</th>
+                              <th className="border-b border-slate-300 px-1 py-1">P</th>
+                              <th className="border-b border-slate-300 px-1 py-1">a</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {thirdLawOrbitSummary.map((row) => (
+                              <tr key={row.orbit} className="odd:bg-white even:bg-slate-50">
+                                <td className="border-b border-slate-200 px-1 py-1">{row.orbit}</td>
+                                <td className="border-b border-slate-200 px-1 py-1">{row.period !== null ? row.period.toFixed(2) : "-"}</td>
+                                <td className="border-b border-slate-200 px-1 py-1">{row.axis !== null ? row.axis.toFixed(2) : "-"}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  ) : null}
                   {currentStage === "Investigation" ? (
                     <div className="mt-3">
                       <button
@@ -422,6 +567,11 @@ export function StagePanel({
                       <p>
                         <strong>Q2:</strong> {myDiscussion.q2}
                       </p>
+                      {!otherDiscussion ? (
+                        <p className="rounded border border-amber-300 bg-amber-50 px-2 py-1 text-amber-800">
+                          Waiting for the other participant to submit discussion answers.
+                        </p>
+                      ) : null}
                     </div>
                   ) : (
                     <form onSubmit={submitDiscussion} className="mt-2 space-y-2">

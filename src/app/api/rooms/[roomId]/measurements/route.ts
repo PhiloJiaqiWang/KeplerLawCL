@@ -11,7 +11,7 @@ export async function POST(req: Request, context: { params: Promise<{ roomId: st
     tool?: "Distance Tool" | "Speed Tool" | "Swept Area Tool";
     timeIntervalSec?: 5 | 10 | 15;
     thirdLawTool?: "Period Tool" | "Axis Tool";
-    thirdLawOrbit?: "Inner Orbit" | "Middle Orbit" | "Outer Orbit";
+    thirdLawOrbit?: "Orbit 1" | "Orbit 2" | "Orbit 3" | "Orbit 4" | "Orbit 5" | "Orbit 6";
   };
 
   if (!body.role || !body.point) {
@@ -31,10 +31,7 @@ export async function POST(req: Request, context: { params: Promise<{ roomId: st
       return NextResponse.json({ error: "Measurements are only available during Investigation." }, { status: 409 });
     }
     if (error instanceof Error && error.message === "ENERGY_DEPLETED") {
-      return NextResponse.json(
-        { error: "Reactor measurement energy depleted. Maximum 6 measurements reached." },
-        { status: 409 },
-      );
+      return NextResponse.json({ error: "Reactor measurement energy depleted for this module." }, { status: 409 });
     }
     if (error instanceof Error && error.message === "POINT_ACCESS_DENIED") {
       return NextResponse.json({ error: "You can only measure points on your assigned side." }, { status: 403 });
