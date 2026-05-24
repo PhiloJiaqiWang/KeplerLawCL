@@ -6,10 +6,11 @@ import type { ChatMessage, ParticipantRole } from "@/lib/types";
 type ChatRoomProps = {
   role: ParticipantRole;
   messages: ChatMessage[];
+  displayNameByRole: Record<ParticipantRole, string>;
   onSend: (content: string) => Promise<void>;
 };
 
-export function ChatRoom({ role, messages, onSend }: ChatRoomProps) {
+export function ChatRoom({ role, messages, displayNameByRole, onSend }: ChatRoomProps) {
   const [value, setValue] = useState("");
   const [isSending, setIsSending] = useState(false);
 
@@ -37,7 +38,7 @@ export function ChatRoom({ role, messages, onSend }: ChatRoomProps) {
           <ul className="space-y-2 text-sm">
             {messages.map((message) => (
               <li key={message.id} className="rounded bg-white p-2 text-slate-800">
-                <p className="font-medium">{message.senderRole}</p>
+                <p className="font-medium">{displayNameByRole[message.senderRole]}</p>
                 <p>{message.content}</p>
               </li>
             ))}
@@ -49,7 +50,7 @@ export function ChatRoom({ role, messages, onSend }: ChatRoomProps) {
         <input
           value={value}
           onChange={(e) => setValue(e.target.value)}
-          placeholder={`Message as ${role}`}
+          placeholder={`Message as ${displayNameByRole[role]}`}
           className="flex-1 rounded-md border border-slate-300 px-3 py-2 text-sm outline-none ring-slate-300 focus:ring"
         />
         <button

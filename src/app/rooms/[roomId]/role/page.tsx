@@ -27,7 +27,7 @@ export default function RolePage() {
     });
 
     if (response.status === 409) {
-      throw new Error("Role already taken. Please choose the other role.");
+      throw new Error("Role already taken by another display name. Use the same name to rejoin or choose the other role.");
     }
 
     if (!response.ok) {

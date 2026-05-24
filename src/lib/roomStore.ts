@@ -2,12 +2,42 @@ import { randomUUID } from "node:crypto";
 import {
   type AgentCondition,
   type EventLog,
+  type MeasurementPoint,
+  type MeasurementTarget,
   type ParticipantRole,
   type ParticipantSlot,
   type RoomState,
+  type Stage,
+  type SimulationType,
 } from "@/lib/types";
 
 const rooms = new Map<string, RoomState>();
+const initialStage: Stage = "Planning";
+export const MAX_MEASUREMENTS_PER_SIMULATION = 6;
+
+const createInitialProgress = (): RoomState["progressBySimulation"] => ({
+  "Kepler First Law": {
+    currentStage: initialStage,
+    planByRole: {},
+    collaborationConfirmedByRole: {},
+    measurements: [],
+    discussionAnswersByRole: {},
+  },
+  "Kepler Second Law": {
+    currentStage: initialStage,
+    planByRole: {},
+    collaborationConfirmedByRole: {},
+    measurements: [],
+    discussionAnswersByRole: {},
+  },
+  "Kepler Third Law": {
+    currentStage: initialStage,
+    planByRole: {},
+    collaborationConfirmedByRole: {},
+    measurements: [],
+    discussionAnswersByRole: {},
+  },
+});
 
 const defaultEvent = (roomId: string): EventLog => ({
   id: randomUUID(),
@@ -25,7 +55,8 @@ export const createOrGetRoom = (roomId: string): RoomState => {
     participantA: null,
     participantB: null,
     currentActivity: "Orientation",
-    currentStage: "Stage 1",
+    currentSimulation: "Kepler First Law",
+    progressBySimulation: createInitialProgress(),
     agentCondition: "Control",
     chatMessages: [],
     eventLogs: [defaultEvent(roomId)],
@@ -45,14 +76,27 @@ const slotKeyByRole: Record<ParticipantRole, "participantA" | "participantB"> = 
 export const joinRole = (roomId: string, role: ParticipantRole, name: string): RoomState => {
   const room = createOrGetRoom(roomId);
   const slotKey = slotKeyByRole[role];
+  const normalizedName = name.trim();
+  const existingParticipant = room[slotKey];
 
-  if (room[slotKey]) {
-    throw new Error("ROLE_TAKEN");
+  if (existingParticipant) {
+    if (existingParticipant.name.toLowerCase() !== normalizedName.toLowerCase()) {
+      throw new Error("ROLE_TAKEN");
+    }
+
+    existingParticipant.joinedAt = new Date().toISOString();
+    room.eventLogs.push({
+      id: randomUUID(),
+      type: "ROOM",
+      message: `${normalizedName} rejoined as ${role}.`,
+      createdAt: new Date().toISOString(),
+    });
+    return room;
   }
 
   const participant: ParticipantSlot = {
     id: randomUUID(),
-    name,
+    name: normalizedName,
     joinedAt: new Date().toISOString(),
   };
 
@@ -60,7 +104,7 @@ export const joinRole = (roomId: string, role: ParticipantRole, name: string): R
   room.eventLogs.push({
     id: randomUUID(),
     type: "ROOM",
-    message: `${name} joined as ${role}.`,
+    message: `${normalizedName} joined as ${role}.`,
     createdAt: new Date().toISOString(),
   });
 
@@ -97,5 +141,220 @@ export const updateAgentCondition = (roomId: string, condition: AgentCondition):
     message: `Agent condition changed to ${condition}.`,
     createdAt: new Date().toISOString(),
   });
+  return room;
+};
+
+export const updateSimulation = (roomId: string, simulation: SimulationType): RoomState => {
+  const room = createOrGetRoom(roomId);
+  room.currentSimulation = simulation;
+  room.eventLogs.push({
+    id: randomUUID(),
+    type: "SYSTEM",
+    message: `Simulation changed to ${simulation}.`,
+    createdAt: new Date().toISOString(),
+  });
+  return room;
+};
+
+const hasBothParticipantsChatted = (room: RoomState): boolean => {
+  const roles = new Set(room.chatMessages.map((message) => message.senderRole));
+  return roles.has("participantA") && roles.has("participantB");
+};
+
+export const submitPlan = (
+  roomId: string,
+  role: ParticipantRole,
+  planText: string,
+  collaborationConfirmed: boolean,
+): RoomState => {
+  const room = createOrGetRoom(roomId);
+  const normalized = planText.trim();
+  const simulation = room.currentSimulation;
+  const progress = room.progressBySimulation[simulation];
+  if (!normalized) {
+    throw new Error("INVALID_PLAN");
+  }
+  if (progress.currentStage !== "Planning") {
+    throw new Error("STAGE_LOCKED");
+  }
+  if (!hasBothParticipantsChatted(room)) {
+    throw new Error("DISCUSSION_REQUIRED");
+  }
+  if (!collaborationConfirmed) {
+    throw new Error("COLLABORATION_CONFIRMATION_REQUIRED");
+  }
+
+  progress.planByRole[role] = normalized;
+  progress.collaborationConfirmedByRole[role] = true;
+  room.eventLogs.push({
+    id: randomUUID(),
+    type: "ROOM",
+    message: `${role} submitted planning notes for ${simulation}.`,
+    createdAt: new Date().toISOString(),
+  });
+
+  const bothSubmitted = Boolean(progress.planByRole.participantA && progress.planByRole.participantB);
+  if (bothSubmitted) {
+    progress.currentStage = "Investigation";
+    room.currentActivity = "Simulation";
+    room.eventLogs.push({
+      id: randomUUID(),
+      type: "SYSTEM",
+      message: `Both plans submitted for ${simulation}. Stage advanced to Investigation.`,
+      createdAt: new Date().toISOString(),
+    });
+  }
+
+  return room;
+};
+
+const pointSides: Record<MeasurementPoint, "left" | "right"> = {
+  L1: "left",
+  L2: "left",
+  L3: "left",
+  R1: "right",
+  R2: "right",
+  R3: "right",
+};
+
+const measurementCoordinates: Record<MeasurementTarget, { x: number; y: number }> = (() => {
+  const cx = 220;
+  const cy = 130;
+  const a = 130;
+  const b = 122;
+  const c = Math.sqrt(a * a - b * b);
+  return {
+    L1: { x: cx + a * Math.cos((5 * Math.PI) / 6), y: cy + b * Math.sin((5 * Math.PI) / 6) },
+    L2: { x: cx - a, y: cy },
+    L3: { x: cx + a * Math.cos((7 * Math.PI) / 6), y: cy + b * Math.sin((7 * Math.PI) / 6) },
+    R1: { x: cx + a * Math.cos(-Math.PI / 6), y: cy + b * Math.sin(-Math.PI / 6) },
+    R2: { x: cx + a, y: cy },
+    R3: { x: cx + a * Math.cos(Math.PI / 6), y: cy + b * Math.sin(Math.PI / 6) },
+    Center: { x: cx, y: cy },
+    "Focus 1": { x: cx - c, y: cy },
+    "Focus 2": { x: cx + c, y: cy },
+  };
+})();
+
+const computeFixedDistance = (from: MeasurementPoint, to: MeasurementTarget): number => {
+  const p1 = measurementCoordinates[from];
+  const p2 = measurementCoordinates[to];
+  const raw = Math.hypot(p2.x - p1.x, p2.y - p1.y);
+  return Math.round(raw * 10) / 10;
+};
+
+export const addMeasurement = (
+  roomId: string,
+  role: ParticipantRole,
+  point: MeasurementPoint,
+  target: MeasurementTarget | null,
+): RoomState => {
+  const room = createOrGetRoom(roomId);
+  const simulation = room.currentSimulation;
+  const progress = room.progressBySimulation[simulation];
+
+  if (progress.currentStage !== "Investigation") {
+    throw new Error("MEASUREMENT_STAGE_LOCKED");
+  }
+  if (progress.measurements.length >= MAX_MEASUREMENTS_PER_SIMULATION) {
+    throw new Error("ENERGY_DEPLETED");
+  }
+  if (!target || !measurementCoordinates[point] || !measurementCoordinates[target] || point === target) {
+    throw new Error("INVALID_POINT_OR_TARGET");
+  }
+
+  const side = pointSides[point];
+  const allowed =
+    (role === "participantA" && side === "left") ||
+    (role === "participantB" && side === "right");
+  if (!allowed) {
+    throw new Error("POINT_ACCESS_DENIED");
+  }
+  if (target in pointSides) {
+    const targetSide = pointSides[target as MeasurementPoint];
+    const roleAllowedForTarget =
+      (role === "participantA" && targetSide === "left") ||
+      (role === "participantB" && targetSide === "right");
+    if (!roleAllowedForTarget) {
+      throw new Error("POINT_ACCESS_DENIED");
+    }
+  }
+
+  const distance = computeFixedDistance(point, target);
+  progress.measurements.push({
+    id: randomUUID(),
+    role,
+    point,
+    target,
+    distance,
+    createdAt: new Date().toISOString(),
+  });
+  room.eventLogs.push({
+    id: randomUUID(),
+    type: "ROOM",
+    message: `${role} measured ${point} -> ${target}: ${distance.toFixed(1)}`,
+    createdAt: new Date().toISOString(),
+  });
+  return room;
+};
+
+export const advanceToDiscussion = (roomId: string): RoomState => {
+  const room = createOrGetRoom(roomId);
+  const simulation = room.currentSimulation;
+  const progress = room.progressBySimulation[simulation];
+
+  if (progress.currentStage !== "Investigation") {
+    throw new Error("STAGE_LOCKED");
+  }
+  progress.currentStage = "Discussion";
+  room.eventLogs.push({
+    id: randomUUID(),
+    type: "SYSTEM",
+    message: `${simulation} advanced to Discussion.`,
+    createdAt: new Date().toISOString(),
+  });
+  return room;
+};
+
+export const submitDiscussionAnswers = (
+  roomId: string,
+  role: ParticipantRole,
+  answers: { q1: string; q2: string },
+): RoomState => {
+  const room = createOrGetRoom(roomId);
+  const simulation = room.currentSimulation;
+  const progress = room.progressBySimulation[simulation];
+
+  if (progress.currentStage !== "Discussion") {
+    throw new Error("STAGE_LOCKED");
+  }
+  if (!answers.q1.trim() || !answers.q2.trim()) {
+    throw new Error("INVALID_DISCUSSION");
+  }
+
+  progress.discussionAnswersByRole[role] = {
+    q1: answers.q1.trim(),
+    q2: answers.q2.trim(),
+  };
+  room.eventLogs.push({
+    id: randomUUID(),
+    type: "ROOM",
+    message: `${role} submitted discussion answers for ${simulation}.`,
+    createdAt: new Date().toISOString(),
+  });
+
+  const bothSubmitted = Boolean(
+    progress.discussionAnswersByRole.participantA && progress.discussionAnswersByRole.participantB,
+  );
+  if (bothSubmitted) {
+    progress.currentStage = "Submission";
+    room.currentActivity = "Debrief";
+    room.eventLogs.push({
+      id: randomUUID(),
+      type: "SYSTEM",
+      message: `Discussion complete for ${simulation}. Stage advanced to Submission.`,
+      createdAt: new Date().toISOString(),
+    });
+  }
   return room;
 };
