@@ -8,6 +8,8 @@ export async function POST(req: Request, context: { params: Promise<{ roomId: st
     role?: ParticipantRole;
     point?: MeasurementPoint;
     target?: MeasurementTarget | null;
+    tool?: "Distance Tool" | "Speed Tool" | "Swept Area Tool";
+    timeIntervalSec?: 5 | 10 | 15;
   };
 
   if (!body.role || !body.point) {
@@ -15,7 +17,10 @@ export async function POST(req: Request, context: { params: Promise<{ roomId: st
   }
 
   try {
-    const room = addMeasurement(roomId, body.role, body.point, body.target ?? null);
+    const room = addMeasurement(roomId, body.role, body.point, body.target ?? null, {
+      tool: body.tool === "Speed Tool" || body.tool === "Swept Area Tool" ? body.tool : undefined,
+      timeIntervalSec: body.timeIntervalSec,
+    });
     return NextResponse.json({ room });
   } catch (error) {
     if (error instanceof Error && error.message === "MEASUREMENT_STAGE_LOCKED") {
@@ -32,6 +37,12 @@ export async function POST(req: Request, context: { params: Promise<{ roomId: st
     }
     if (error instanceof Error && error.message === "INVALID_POINT_OR_TARGET") {
       return NextResponse.json({ error: "Invalid point or target." }, { status: 400 });
+    }
+    if (error instanceof Error && error.message === "INVALID_SECOND_LAW_TOOL") {
+      return NextResponse.json({ error: "Select Speed Tool or Swept Area Tool." }, { status: 400 });
+    }
+    if (error instanceof Error && error.message === "INVALID_TIME_INTERVAL") {
+      return NextResponse.json({ error: "Select a valid time interval." }, { status: 400 });
     }
     return NextResponse.json({ error: "Unable to record measurement." }, { status: 500 });
   }

@@ -6,7 +6,11 @@ import type { MeasurementPoint, MeasurementTarget, ParticipantRole, SimulationTy
 type SimulationRunnerProps = {
   simulation: SimulationType;
   onChange: (simulation: SimulationType) => Promise<void>;
-  onMeasure: (point: MeasurementPoint, target: MeasurementTarget | null) => Promise<void>;
+  onMeasure: (
+    point: MeasurementPoint,
+    target: MeasurementTarget | null,
+    options?: { tool?: "Speed Tool" | "Swept Area Tool"; timeIntervalSec?: 5 | 10 | 15 },
+  ) => Promise<void>;
   role: ParticipantRole;
   currentStage?: Stage;
   measurementRemaining: number;
@@ -32,10 +36,12 @@ export function SimulationRunner({
 }: SimulationRunnerProps) {
   const [theta, setTheta] = useState(0);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [secondLawTool, setSecondLawTool] = useState<"Speed Tool" | "Swept Area Tool">("Speed Tool");
+  const [secondLawTimeInterval, setSecondLawTimeInterval] = useState<5 | 10 | 15>(10);
   const [measureError, setMeasureError] = useState("");
 
   useEffect(() => {
-    if (simulation !== "Kepler First Law") return;
+    if (simulation !== "Kepler First Law" && simulation !== "Kepler Second Law") return;
 
     const timer = setInterval(() => {
       setTheta((prev) => (prev + 0.02) % (Math.PI * 2));
@@ -73,38 +79,25 @@ export function SimulationRunner({
     const cx = 220;
     const cy = 130;
     const a = 130;
-    const b = 92;
+    const b = 122;
     const c = Math.sqrt(a * a - b * b);
-    const focusX = cx - c;
-    const exoX = cx + a * Math.cos(theta);
-    const exoY = cy + b * Math.sin(theta);
+    const focusLeftX = cx - c;
+    const focusRightX = cx + c;
+    const x = cx + a * Math.cos(theta);
+    const y = cy + b * Math.sin(theta);
+    const checkpoints: OrbitPoint[] = [
+      { id: "l1", label: "L1", x: cx + a * Math.cos((5 * Math.PI) / 6), y: cy + b * Math.sin((5 * Math.PI) / 6), side: "left" },
+      { id: "l2", label: "L2", x: cx - a, y: cy, side: "left" },
+      { id: "l3", label: "L3", x: cx + a * Math.cos((7 * Math.PI) / 6), y: cy + b * Math.sin((7 * Math.PI) / 6), side: "left" },
+      { id: "r1", label: "R1", x: cx + a * Math.cos(-Math.PI / 6), y: cy + b * Math.sin(-Math.PI / 6), side: "right" },
+      { id: "r2", label: "R2", x: cx + a, y: cy, side: "right" },
+      { id: "r3", label: "R3", x: cx + a * Math.cos(Math.PI / 6), y: cy + b * Math.sin(Math.PI / 6), side: "right" },
+      { id: "center", label: "Center", x: cx, y: cy, side: "neutral" },
+      { id: "f1", label: "Focus 1", x: focusLeftX, y: cy, side: "neutral" },
+      { id: "f2", label: "Focus 2", x: focusRightX, y: cy, side: "neutral" },
+    ];
 
-    const makeSectorPath = (start: number, end: number) => {
-      const samples = 24;
-      const points: Array<{ x: number; y: number }> = [];
-      for (let i = 0; i <= samples; i += 1) {
-        const t = start + ((end - start) * i) / samples;
-        points.push({ x: cx + a * Math.cos(t), y: cy + b * Math.sin(t) });
-      }
-      const first = points[0];
-      if (!first) return "";
-      const curve = points
-        .map((p, idx) => `${idx === 0 ? "L" : "L"} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`)
-        .join(" ");
-      return `M ${focusX.toFixed(1)} ${cy.toFixed(1)} ${curve} Z`;
-    };
-
-    return {
-      cx,
-      cy,
-      a,
-      b,
-      focusX,
-      exoX,
-      exoY,
-      sectorNearPerihelion: makeSectorPath(-0.35, 0.2),
-      sectorNearAphelion: makeSectorPath(2.25, 2.9),
-    };
+    return { cx, cy, a, b, focusLeftX, x, y, checkpoints };
   }, [theta]);
 
   const canAccessSide = (side: OrbitPoint["side"]) => {
@@ -122,6 +115,9 @@ export function SimulationRunner({
       if (prev.includes(point.id)) {
         return prev.filter((id) => id !== point.id);
       }
+      if (simulation === "Kepler Second Law") {
+        return [point.id];
+      }
       if (prev.length >= 2) {
         return [prev[1], point.id];
       }
@@ -131,15 +127,22 @@ export function SimulationRunner({
 
   const pointsById = useMemo(() => {
     const map = new Map<string, OrbitPoint>();
-    firstLawState.checkpoints.forEach((point) => map.set(point.id, point));
+    const activePoints = simulation === "Kepler Second Law" ? secondLawState.checkpoints : firstLawState.checkpoints;
+    activePoints.forEach((point) => map.set(point.id, point));
     return map;
-  }, [firstLawState.checkpoints]);
+  }, [firstLawState.checkpoints, secondLawState.checkpoints, simulation]);
 
   const selectedPoints = selectedIds
     .map((id) => pointsById.get(id))
     .filter((point): point is OrbitPoint => Boolean(point));
 
   const selectedMeasurement = useMemo(() => {
+    if (simulation === "Kepler Second Law") {
+      if (selectedPoints.length !== 1) return null;
+      const point = selectedPoints[0];
+      if (!point || point.side === "neutral") return null;
+      return { point: point.label as MeasurementPoint, target: null as MeasurementTarget | null };
+    }
     if (selectedPoints.length !== 2) return null;
     const [a, b] = selectedPoints;
     const sideA = a.side !== "neutral";
@@ -149,7 +152,7 @@ export function SimulationRunner({
     const source = (sideA ? a : b).label as MeasurementPoint;
     const target = (sideA ? b : a).label as MeasurementTarget;
     return { point: source, target };
-  }, [selectedPoints]);
+  }, [selectedPoints, simulation]);
 
   const measureSelected = async () => {
     if (currentStage !== "Investigation") return;
@@ -158,12 +161,19 @@ export function SimulationRunner({
       return;
     }
     if (!selectedMeasurement) {
-      setMeasureError("Select two points including at least one side point before measuring.");
+      setMeasureError(
+        simulation === "Kepler Second Law"
+          ? "Select one side point before measuring."
+          : "Select two points including at least one side point before measuring.",
+      );
       return;
     }
     setMeasureError("");
     try {
-      await onMeasure(selectedMeasurement.point, selectedMeasurement.target);
+      await onMeasure(selectedMeasurement.point, selectedMeasurement.target, {
+        tool: simulation === "Kepler Second Law" ? secondLawTool : undefined,
+        timeIntervalSec: simulation === "Kepler Second Law" ? secondLawTimeInterval : undefined,
+      });
       setSelectedIds([]);
     } catch (error) {
       setMeasureError(error instanceof Error ? error.message : "Measurement failed.");
@@ -183,7 +193,10 @@ export function SimulationRunner({
         {simulations.map((item) => (
           <button
             key={item}
-            onClick={() => void onChange(item)}
+            onClick={() => {
+              setSelectedIds([]);
+              void onChange(item);
+            }}
             className={`rounded-md border px-2 py-1 text-xs ${
               item === simulation
                 ? "border-slate-900 bg-slate-900 text-white"
@@ -287,9 +300,49 @@ export function SimulationRunner({
         </div>
       ) : simulation === "Kepler Second Law" ? (
         <div className="mt-4 rounded-md border border-slate-300 bg-white p-3">
-          <p className="mb-2 text-xs text-slate-600">
-            Kepler&apos;s Second Law concept: equal time intervals sweep out equal areas (A1 ≈ A2).
-          </p>
+          <div className="mb-2 flex items-center gap-2 text-sm">
+            <select
+              value={secondLawTool}
+              onChange={(e) => setSecondLawTool(e.target.value as "Speed Tool" | "Swept Area Tool")}
+              disabled={currentStage !== "Investigation"}
+              className="rounded border border-slate-300 bg-white px-2 py-1 text-xs text-slate-700 disabled:bg-slate-100"
+            >
+              <option value="Speed Tool">Speed Tool</option>
+              <option value="Swept Area Tool">Swept Area Tool</option>
+            </select>
+            <select
+              value={String(secondLawTimeInterval)}
+              onChange={(e) => setSecondLawTimeInterval(Number(e.target.value) as 5 | 10 | 15)}
+              disabled={currentStage !== "Investigation"}
+              className="rounded border border-slate-300 bg-white px-2 py-1 text-xs text-slate-700 disabled:bg-slate-100"
+            >
+              <option value="5">5s</option>
+              <option value="10">10s</option>
+              <option value="15">15s</option>
+            </select>
+            <button
+              disabled={currentStage !== "Investigation" || measurementRemaining <= 0}
+              onClick={() => void measureSelected()}
+              className="rounded border border-slate-900 bg-slate-900 px-3 py-1.5 text-xs text-white disabled:cursor-not-allowed disabled:border-slate-300 disabled:bg-slate-200 disabled:text-slate-500"
+            >
+              Measure
+            </button>
+            <button
+              disabled={currentStage !== "Investigation" || selectedIds.length === 0}
+              onClick={() => setSelectedIds([])}
+              className="rounded border border-slate-300 bg-white px-3 py-1.5 text-xs text-slate-700 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
+            >
+              Clear Selection
+            </button>
+            {selectedMeasurement ? (
+              <span className="text-xs text-slate-600">
+                Ready: {selectedMeasurement.point} | {secondLawTool} | {secondLawTimeInterval}s
+              </span>
+            ) : (
+              <span className="text-xs text-slate-600">Select 1 side point to run the selected tool.</span>
+            )}
+            <span className="text-xs font-medium text-slate-700">Energy: {measurementRemaining}/6</span>
+          </div>
           <svg viewBox="0 0 440 260" className="h-[240px] w-full">
             <rect x="0" y="0" width="440" height="260" fill="#f8fafc" />
             <ellipse
@@ -302,24 +355,61 @@ export function SimulationRunner({
               strokeWidth="2"
               strokeDasharray="6 4"
             />
-            <path d={secondLawState.sectorNearPerihelion} fill="#93c5fd" fillOpacity="0.45" stroke="#60a5fa" />
-            <path d={secondLawState.sectorNearAphelion} fill="#86efac" fillOpacity="0.45" stroke="#4ade80" />
-            <circle cx={secondLawState.focusX} cy={secondLawState.cy} r="11" fill="#f59e0b" />
-            <circle cx={secondLawState.exoX} cy={secondLawState.exoY} r="7" fill="#2563eb" />
-            <text x={secondLawState.exoX + 10} y={secondLawState.exoY - 8} fontSize="12" fill="#1e293b">
+            <circle cx={secondLawState.focusLeftX} cy={secondLawState.cy} r="12" fill="#f59e0b" />
+            <circle cx={secondLawState.x} cy={secondLawState.y} r="7" fill="#2563eb" />
+            <text x={secondLawState.x + 10} y={secondLawState.y - 8} fontSize="12" fill="#1e293b">
               Exoplanet
             </text>
-            <text x={secondLawState.cx + 118} y={secondLawState.cy - 58} fontSize="11" fill="#1d4ed8">
-              A1 (Δt)
-            </text>
-            <text x={secondLawState.cx - 168} y={secondLawState.cy + 68} fontSize="11" fill="#166534">
-              A2 (Δt)
-            </text>
+            {selectedPoints.length === 2 ? (
+              <line
+                x1={selectedPoints[0].x}
+                y1={selectedPoints[0].y}
+                x2={selectedPoints[1].x}
+                y2={selectedPoints[1].y}
+                stroke="#0f172a"
+                strokeWidth="1.5"
+                strokeDasharray="4 3"
+              />
+            ) : null}
+            {secondLawState.checkpoints.map((point) => {
+              const accessible = canAccessSide(point.side);
+              const clickable = currentStage === "Investigation" && accessible && point.side !== "neutral";
+              const selected = selectedIds.includes(point.id);
+              return (
+                <g
+                  key={point.id}
+                  onClick={() => void onPointClick(point)}
+                  className={clickable ? "cursor-pointer" : undefined}
+                >
+                  <circle
+                    cx={point.x}
+                    cy={point.y}
+                    r={selected ? 6 : point.side === "neutral" ? 4 : 5}
+                    fill={selected ? "#dc2626" : accessible ? "#0f172a" : "#94a3b8"}
+                  />
+                  <text x={point.x + 7} y={point.y - 7} fontSize="10" fill={accessible ? "#1e293b" : "#94a3b8"}>
+                    {point.label}
+                  </text>
+                </g>
+              );
+            })}
           </svg>
           <p className="mt-2 text-xs text-slate-600">
-            Use this as a visual guide in Discussion: area near the star can span a shorter arc, while farther area
-            spans a longer arc for the same time interval.
+            Access control: Participant A can inspect left-side points (L1-L3), Participant B can inspect right-side
+            points (R1-R3). Center and two foci are visible to both.
           </p>
+          <p className="mt-1 text-xs text-slate-600">
+            Choose a tool and time interval, then measure one accessible side point.
+          </p>
+          {currentStage !== "Investigation" ? (
+            <p className="mt-1 text-xs text-amber-700">Measurements unlock when stage reaches Investigation.</p>
+          ) : null}
+          {currentStage === "Investigation" && measurementRemaining <= 0 ? (
+            <p className="mt-1 text-xs text-amber-700">
+              Measurement limit reached. Discuss with your partner and continue analysis with existing data.
+            </p>
+          ) : null}
+          {measureError ? <p className="mt-1 text-xs text-red-600">{measureError}</p> : null}
         </div>
       ) : (
         <div className="mt-4 flex h-[240px] items-center justify-center rounded-md border border-dashed border-slate-400 bg-white text-sm text-slate-500">

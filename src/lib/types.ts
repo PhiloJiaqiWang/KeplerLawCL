@@ -43,6 +43,10 @@ export type MeasurementRecord = {
   point: MeasurementPoint;
   target: MeasurementTarget | null;
   distance: number;
+  tool?: "Distance Tool" | "Speed Tool" | "Swept Area Tool";
+  timeIntervalSec?: 5 | 10 | 15;
+  value?: number;
+  valueUnit?: "u/s" | "u^2";
   createdAt: string;
 };
 

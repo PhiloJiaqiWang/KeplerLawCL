@@ -101,11 +101,15 @@ export function RoomManager({ roomId, role }: RoomManagerProps) {
     await loadRoom();
   };
 
-  const addMeasurement = async (point: MeasurementPoint, target: MeasurementTarget | null) => {
+  const addMeasurement = async (
+    point: MeasurementPoint,
+    target: MeasurementTarget | null,
+    options?: { tool?: "Speed Tool" | "Swept Area Tool"; timeIntervalSec?: 5 | 10 | 15 },
+  ) => {
     const response = await fetch(`/api/rooms/${roomId}/measurements`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ role, point, target }),
+      body: JSON.stringify({ role, point, target, ...options }),
     });
     if (!response.ok) {
       const payload = (await response.json()) as { error?: string };

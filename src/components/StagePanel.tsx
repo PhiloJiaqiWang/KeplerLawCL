@@ -174,6 +174,33 @@ export function StagePanel({
                   </p>
                 </div>
               ) : null}
+              {room.currentSimulation === "Kepler Second Law" ? (
+                <div className="mt-2 rounded-md border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
+                  <p>
+                    Nova has detected unusual orbital behavior. The planet does not appear to move uniformly
+                    throughout its orbit.
+                  </p>
+                  <p className="mt-2">
+                    Work with your partner to determine whether the motion follows a hidden underlying rule.
+                  </p>
+                  <p className="mt-2 font-medium">Both participants can use:</p>
+                  <p className="mt-2">
+                    <code>Speed Tool</code> (measures the planet&apos;s speed at selected orbit locations).
+                    <br />
+                    <code>Swept Area Tool</code> (measures the orbital region swept by the star-planet line during a chosen time
+                    interval).
+                  </p>
+                  <p className="mt-2">Before entering Investigation, align on a joint plan:</p>
+                  <ul className="mt-1 list-disc pl-5">
+                    <li>which speed and swept area measurements each person will collect</li>
+                    <li>what patterns or evidence would suggest that the orbit follows a consistent physical principle</li>
+                  </ul>
+                  <p className="mt-2 font-medium">
+                    Reactor constraint: only 6 total measurements are available. Coordinate carefully to decide how to
+                    distribute them across locations, tools, and time intervals.
+                  </p>
+                </div>
+              ) : null}
               <textarea
                 id="plan-input"
                 value={planText}
@@ -202,7 +229,11 @@ export function StagePanel({
                 measurement.
               </p>
               {measurementRows.length === 0 ? (
-                <p className="mt-2">No measurements yet. Click your side points in the simulation to record fixed distances.</p>
+                <p className="mt-2">
+                  {room.currentSimulation === "Kepler Second Law"
+                    ? "No measurements yet. Select a side point, tool, and time interval in the simulation, then click Measure."
+                    : "No measurements yet. Click your side points in the simulation to record fixed distances."}
+                </p>
               ) : (
                 <>
                   <div className="mt-2 max-h-44 overflow-y-auto rounded border border-slate-300">
@@ -212,8 +243,18 @@ export function StagePanel({
                           <th className="border-b border-slate-300 px-2 py-1 font-medium text-slate-700">Time</th>
                           <th className="border-b border-slate-300 px-2 py-1 font-medium text-slate-700">Role</th>
                           <th className="border-b border-slate-300 px-2 py-1 font-medium text-slate-700">Point</th>
-                          <th className="border-b border-slate-300 px-2 py-1 font-medium text-slate-700">Target</th>
-                          <th className="border-b border-slate-300 px-2 py-1 font-medium text-slate-700">Distance</th>
+                          {room.currentSimulation === "Kepler Second Law" ? (
+                            <>
+                              <th className="border-b border-slate-300 px-2 py-1 font-medium text-slate-700">Tool</th>
+                              <th className="border-b border-slate-300 px-2 py-1 font-medium text-slate-700">Interval</th>
+                              <th className="border-b border-slate-300 px-2 py-1 font-medium text-slate-700">Value</th>
+                            </>
+                          ) : (
+                            <>
+                              <th className="border-b border-slate-300 px-2 py-1 font-medium text-slate-700">Target</th>
+                              <th className="border-b border-slate-300 px-2 py-1 font-medium text-slate-700">Distance</th>
+                            </>
+                          )}
                         </tr>
                       </thead>
                       <tbody>
@@ -224,8 +265,24 @@ export function StagePanel({
                             </td>
                             <td className="border-b border-slate-200 px-2 py-1">{record.role}</td>
                             <td className="border-b border-slate-200 px-2 py-1">{record.point}</td>
-                            <td className="border-b border-slate-200 px-2 py-1">{record.target}</td>
-                            <td className="border-b border-slate-200 px-2 py-1">{record.distance.toFixed(1)}</td>
+                            {room.currentSimulation === "Kepler Second Law" ? (
+                              <>
+                                <td className="border-b border-slate-200 px-2 py-1">{record.tool ?? "-"}</td>
+                                <td className="border-b border-slate-200 px-2 py-1">
+                                  {record.timeIntervalSec ? `${record.timeIntervalSec}s` : "-"}
+                                </td>
+                                <td className="border-b border-slate-200 px-2 py-1">
+                                  {record.value !== undefined && record.valueUnit
+                                    ? `${record.value.toFixed(2)} ${record.valueUnit}`
+                                    : "-"}
+                                </td>
+                              </>
+                            ) : (
+                              <>
+                                <td className="border-b border-slate-200 px-2 py-1">{record.target}</td>
+                                <td className="border-b border-slate-200 px-2 py-1">{record.distance.toFixed(1)}</td>
+                              </>
+                            )}
                           </tr>
                         ))}
                       </tbody>

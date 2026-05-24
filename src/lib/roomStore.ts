@@ -243,11 +243,46 @@ const computeFixedDistance = (from: MeasurementPoint, to: MeasurementTarget): nu
   return Math.round(raw * 10) / 10;
 };
 
+const secondLawTimeIntervals = [5, 10, 15] as const;
+type SecondLawInterval = (typeof secondLawTimeIntervals)[number];
+type SecondLawTool = "Speed Tool" | "Swept Area Tool";
+
+const secondLawBaseSpeedByPoint: Record<MeasurementPoint, number> = {
+  L1: 6.2,
+  L2: 6.8,
+  L3: 7.4,
+  R1: 8.2,
+  R2: 7.7,
+  R3: 7.1,
+};
+
+const secondLawAreaRate = 2.48;
+const secondLawAreaOffsetByPoint: Record<MeasurementPoint, number> = {
+  L1: -0.2,
+  L2: 0.1,
+  L3: -0.1,
+  R1: 0.0,
+  R2: -0.2,
+  R3: 0.2,
+};
+
+const computeSecondLawSpeed = (point: MeasurementPoint, interval: SecondLawInterval): number => {
+  const intervalFactor = interval === 5 ? 0.98 : interval === 15 ? 1.02 : 1;
+  return Number((secondLawBaseSpeedByPoint[point] * intervalFactor).toFixed(2));
+};
+
+const computeSecondLawSweptArea = (point: MeasurementPoint, interval: SecondLawInterval): number =>
+  Number((secondLawAreaRate * interval + secondLawAreaOffsetByPoint[point]).toFixed(2));
+
 export const addMeasurement = (
   roomId: string,
   role: ParticipantRole,
   point: MeasurementPoint,
   target: MeasurementTarget | null,
+  options?: {
+    tool?: SecondLawTool;
+    timeIntervalSec?: SecondLawInterval;
+  },
 ): RoomState => {
   const room = createOrGetRoom(roomId);
   const simulation = room.currentSimulation;
@@ -259,9 +294,6 @@ export const addMeasurement = (
   if (progress.measurements.length >= MAX_MEASUREMENTS_PER_SIMULATION) {
     throw new Error("ENERGY_DEPLETED");
   }
-  if (!target || !measurementCoordinates[point] || !measurementCoordinates[target] || point === target) {
-    throw new Error("INVALID_POINT_OR_TARGET");
-  }
 
   const side = pointSides[point];
   const allowed =
@@ -269,6 +301,65 @@ export const addMeasurement = (
     (role === "participantB" && side === "right");
   if (!allowed) {
     throw new Error("POINT_ACCESS_DENIED");
+  }
+
+  if (simulation === "Kepler Second Law") {
+    const tool = options?.tool;
+    const interval = options?.timeIntervalSec;
+    if (!tool || (tool !== "Speed Tool" && tool !== "Swept Area Tool")) {
+      throw new Error("INVALID_SECOND_LAW_TOOL");
+    }
+    if (!interval || !secondLawTimeIntervals.includes(interval)) {
+      throw new Error("INVALID_TIME_INTERVAL");
+    }
+
+    if (tool === "Speed Tool") {
+      const speed = computeSecondLawSpeed(point, interval);
+      progress.measurements.push({
+        id: randomUUID(),
+        role,
+        point,
+        target: null,
+        distance: 0,
+        tool,
+        timeIntervalSec: interval,
+        value: speed,
+        valueUnit: "u/s",
+        createdAt: new Date().toISOString(),
+      });
+      room.eventLogs.push({
+        id: randomUUID(),
+        type: "ROOM",
+        message: `${role} measured speed at ${point} (${interval}s): ${speed.toFixed(2)} u/s`,
+        createdAt: new Date().toISOString(),
+      });
+      return room;
+    }
+
+    const area = computeSecondLawSweptArea(point, interval);
+    progress.measurements.push({
+      id: randomUUID(),
+      role,
+      point,
+      target: null,
+      distance: 0,
+      tool,
+      timeIntervalSec: interval,
+      value: area,
+      valueUnit: "u^2",
+      createdAt: new Date().toISOString(),
+    });
+    room.eventLogs.push({
+      id: randomUUID(),
+      type: "ROOM",
+      message: `${role} measured swept area at ${point} (${interval}s): ${area.toFixed(2)} u^2`,
+      createdAt: new Date().toISOString(),
+    });
+    return room;
+  }
+
+  if (!target || !measurementCoordinates[point] || !measurementCoordinates[target] || point === target) {
+    throw new Error("INVALID_POINT_OR_TARGET");
   }
   if (target in pointSides) {
     const targetSide = pointSides[target as MeasurementPoint];
