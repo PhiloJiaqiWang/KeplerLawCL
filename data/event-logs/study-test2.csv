@@ -1,0 +1,4 @@
+id,createdAt,type,message
+"8a1a968f-8fdc-41ca-845e-eefec4c31bde","2026-05-30T06:33:41.429Z","SYSTEM","Room study-test2 initialized."
+"f94a2ccb-4e4f-4208-b697-45de533481b0","2026-05-30T06:33:59.759Z","ROOM","Philo joined as participantA."
+"2e63312b-9a79-44bf-bfc8-ace78c36620e","2026-05-30T06:34:04.020Z","ROOM","Alex joined as participantB."

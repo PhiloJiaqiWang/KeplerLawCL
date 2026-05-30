@@ -1,4 +1,6 @@
 import { randomUUID } from "node:crypto";
+import { appendFileSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
+import path from "node:path";
 import {
   type AgentCondition,
   type EventLog,
@@ -19,6 +21,7 @@ import {
 const rooms = new Map<string, RoomState>();
 const initialStage: Stage = "Planning";
 export { MAX_MEASUREMENTS_PER_SIMULATION, MAX_MEASUREMENTS_THIRD_LAW, getMaxMeasurementsForSimulation };
+const EVENT_LOG_DIR = path.join(process.cwd(), "data", "event-logs");
 
 const createInitialProgress = (): RoomState["progressBySimulation"] => ({
   "Kepler First Law": {
@@ -51,6 +54,28 @@ const defaultEvent = (roomId: string): EventLog => ({
   createdAt: new Date().toISOString(),
 });
 
+const escapeCsv = (value: string) => `"${value.replace(/"/g, '""')}"`;
+
+const appendEventToCsv = (roomId: string, event: EventLog) => {
+  mkdirSync(EVENT_LOG_DIR, { recursive: true });
+  const filePath = path.join(EVENT_LOG_DIR, `${roomId}.csv`);
+  if (!existsSync(filePath)) {
+    writeFileSync(filePath, "id,createdAt,type,message\n", "utf8");
+  }
+  const line = [
+    escapeCsv(event.id),
+    escapeCsv(event.createdAt),
+    escapeCsv(event.type),
+    escapeCsv(event.message),
+  ].join(",");
+  appendFileSync(filePath, `${line}\n`, "utf8");
+};
+
+const addEvent = (room: RoomState, event: EventLog) => {
+  room.eventLogs.push(event);
+  appendEventToCsv(room.roomId, event);
+};
+
 export const createOrGetRoom = (roomId: string): RoomState => {
   const existing = rooms.get(roomId);
   if (existing) return existing;
@@ -64,10 +89,11 @@ export const createOrGetRoom = (roomId: string): RoomState => {
     progressBySimulation: createInitialProgress(),
     agentCondition: "Control",
     chatMessages: [],
-    eventLogs: [defaultEvent(roomId)],
+    eventLogs: [],
   };
 
   rooms.set(roomId, room);
+  addEvent(room, defaultEvent(roomId));
   return room;
 };
 
@@ -90,13 +116,13 @@ export const joinRole = (roomId: string, role: ParticipantRole, name: string): R
     }
 
     existingParticipant.joinedAt = new Date().toISOString();
-    room.eventLogs.push({
+    addEvent(room, {
       id: randomUUID(),
       type: "ROOM",
       message: `${normalizedName} rejoined as ${role}.`,
       createdAt: new Date().toISOString(),
     });
-    return room;
+        return room;
   }
 
   const participant: ParticipantSlot = {
@@ -106,14 +132,14 @@ export const joinRole = (roomId: string, role: ParticipantRole, name: string): R
   };
 
   room[slotKey] = participant;
-  room.eventLogs.push({
+  addEvent(room, {
     id: randomUUID(),
     type: "ROOM",
     message: `${normalizedName} joined as ${role}.`,
     createdAt: new Date().toISOString(),
   });
 
-  return room;
+    return room;
 };
 
 export const postMessage = (roomId: string, role: ParticipantRole, content: string): RoomState => {
@@ -127,38 +153,38 @@ export const postMessage = (roomId: string, role: ParticipantRole, content: stri
   };
 
   room.chatMessages.push(message);
-  room.eventLogs.push({
+  addEvent(room, {
     id: randomUUID(),
     type: "CHAT",
     message: `${role}: ${content}`,
     createdAt: message.createdAt,
   });
 
-  return room;
+    return room;
 };
 
 export const updateAgentCondition = (roomId: string, condition: AgentCondition): RoomState => {
   const room = createOrGetRoom(roomId);
   room.agentCondition = condition;
-  room.eventLogs.push({
+  addEvent(room, {
     id: randomUUID(),
     type: "SYSTEM",
     message: `Agent condition changed to ${condition}.`,
     createdAt: new Date().toISOString(),
   });
-  return room;
+    return room;
 };
 
 export const updateSimulation = (roomId: string, simulation: SimulationType): RoomState => {
   const room = createOrGetRoom(roomId);
   room.currentSimulation = simulation;
-  room.eventLogs.push({
+  addEvent(room, {
     id: randomUUID(),
     type: "SYSTEM",
     message: `Simulation changed to ${simulation}.`,
     createdAt: new Date().toISOString(),
   });
-  return room;
+    return room;
 };
 
 const hasBothParticipantsChatted = (room: RoomState): boolean => {
@@ -191,7 +217,7 @@ export const submitPlan = (
 
   progress.planByRole[role] = normalized;
   progress.collaborationConfirmedByRole[role] = true;
-  room.eventLogs.push({
+  addEvent(room, {
     id: randomUUID(),
     type: "ROOM",
     message: `${role} submitted planning notes for ${simulation}.`,
@@ -202,7 +228,7 @@ export const submitPlan = (
   if (bothSubmitted) {
     progress.currentStage = "Investigation";
     room.currentActivity = "Simulation";
-    room.eventLogs.push({
+    addEvent(room, {
       id: randomUUID(),
       type: "SYSTEM",
       message: `Both plans submitted for ${simulation}. Stage advanced to Investigation.`,
@@ -210,7 +236,7 @@ export const submitPlan = (
     });
   }
 
-  return room;
+    return room;
 };
 
 const pointSides: Record<MeasurementPoint, "left" | "right"> = {
@@ -343,13 +369,13 @@ export const addMeasurement = (
       valueUnit,
       createdAt: new Date().toISOString(),
     });
-    room.eventLogs.push({
+    addEvent(room, {
       id: randomUUID(),
       type: "ROOM",
       message: `${role} measured ${tool} on ${orbit}: ${value.toFixed(2)} ${valueUnit}`,
       createdAt: new Date().toISOString(),
     });
-    return room;
+        return room;
   }
 
   const side = pointSides[point];
@@ -385,13 +411,13 @@ export const addMeasurement = (
         valueUnit: "u/s",
         createdAt: new Date().toISOString(),
       });
-      room.eventLogs.push({
+      addEvent(room, {
         id: randomUUID(),
         type: "ROOM",
         message: `${role} measured speed at ${point} (${speedInterval}s): ${speed.toFixed(2)} u/s`,
         createdAt: new Date().toISOString(),
       });
-      return room;
+            return room;
     }
 
     if (!interval || !secondLawTimeIntervals.includes(interval)) {
@@ -410,13 +436,13 @@ export const addMeasurement = (
       valueUnit: "u^2",
       createdAt: new Date().toISOString(),
     });
-    room.eventLogs.push({
+    addEvent(room, {
       id: randomUUID(),
       type: "ROOM",
       message: `${role} measured swept area at ${point} (${interval}s): ${area.toFixed(2)} u^2`,
       createdAt: new Date().toISOString(),
     });
-    return room;
+        return room;
   }
 
   if (!target || !measurementCoordinates[point] || !measurementCoordinates[target] || point === target) {
@@ -441,13 +467,13 @@ export const addMeasurement = (
     distance,
     createdAt: new Date().toISOString(),
   });
-  room.eventLogs.push({
+  addEvent(room, {
     id: randomUUID(),
     type: "ROOM",
     message: `${role} measured ${point} -> ${target}: ${distance.toFixed(1)}`,
     createdAt: new Date().toISOString(),
   });
-  return room;
+    return room;
 };
 
 export const advanceToDiscussion = (roomId: string): RoomState => {
@@ -459,13 +485,13 @@ export const advanceToDiscussion = (roomId: string): RoomState => {
     throw new Error("STAGE_LOCKED");
   }
   progress.currentStage = "Discussion";
-  room.eventLogs.push({
+  addEvent(room, {
     id: randomUUID(),
     type: "SYSTEM",
     message: `${simulation} advanced to Discussion.`,
     createdAt: new Date().toISOString(),
   });
-  return room;
+    return room;
 };
 
 export const submitDiscussionAnswers = (
@@ -488,7 +514,7 @@ export const submitDiscussionAnswers = (
     q1: answers.q1.trim(),
     q2: answers.q2.trim(),
   };
-  room.eventLogs.push({
+  addEvent(room, {
     id: randomUUID(),
     type: "ROOM",
     message: `${role} submitted discussion answers for ${simulation}.`,
@@ -501,12 +527,12 @@ export const submitDiscussionAnswers = (
   if (bothSubmitted) {
     progress.currentStage = "Submission";
     room.currentActivity = "Debrief";
-    room.eventLogs.push({
+    addEvent(room, {
       id: randomUUID(),
       type: "SYSTEM",
       message: `Discussion complete for ${simulation}. Stage advanced to Submission.`,
       createdAt: new Date().toISOString(),
     });
   }
-  return room;
+    return room;
 };

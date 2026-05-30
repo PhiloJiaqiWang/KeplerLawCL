@@ -209,7 +209,7 @@ export function StagePanel({
 
   return (
     <section className="h-full rounded-lg border border-slate-300 bg-slate-100 p-4">
-      <h2 className="text-lg font-semibold text-slate-900">Nova</h2>
+      <h2 className="text-lg font-semibold text-slate-900">Workspace</h2>
       <p className="mt-1 text-sm text-slate-700">
         <strong>Current Stage:</strong> {currentStage}
       </p>
