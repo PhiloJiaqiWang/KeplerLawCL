@@ -12,9 +12,19 @@ export default function RolePage() {
 
   useEffect(() => {
     const load = async () => {
-      const response = await fetch(`/api/rooms/${params.roomId}`, { cache: "no-store" });
-      const payload = (await response.json()) as { room: RoomState };
-      setRoom(payload.room);
+      try {
+        const response = await fetch(`/api/rooms/${params.roomId}`, { cache: "no-store" });
+        if (!response.ok) {
+          throw new Error(`Unable to load room (${response.status}).`);
+        }
+        const payload = (await response.json()) as { room?: RoomState; error?: string };
+        if (!payload.room) {
+          throw new Error(payload.error ?? "Room payload is missing.");
+        }
+        setRoom(payload.room);
+      } catch (error) {
+        console.error("Role page room load failed", error);
+      }
     };
     void load();
   }, [params.roomId]);

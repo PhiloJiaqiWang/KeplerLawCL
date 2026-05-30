@@ -57,18 +57,27 @@ const defaultEvent = (roomId: string): EventLog => ({
 const escapeCsv = (value: string) => `"${value.replace(/"/g, '""')}"`;
 
 const appendEventToCsv = (roomId: string, event: EventLog) => {
-  mkdirSync(EVENT_LOG_DIR, { recursive: true });
-  const filePath = path.join(EVENT_LOG_DIR, `${roomId}.csv`);
-  if (!existsSync(filePath)) {
-    writeFileSync(filePath, "id,createdAt,type,message\n", "utf8");
+  try {
+    mkdirSync(EVENT_LOG_DIR, { recursive: true });
+    const filePath = path.join(EVENT_LOG_DIR, `${roomId}.csv`);
+    if (!existsSync(filePath)) {
+      writeFileSync(filePath, "id,createdAt,type,message\n", "utf8");
+    }
+    const line = [
+      escapeCsv(event.id),
+      escapeCsv(event.createdAt),
+      escapeCsv(event.type),
+      escapeCsv(event.message),
+    ].join(",");
+    appendFileSync(filePath, `${line}\n`, "utf8");
+  } catch (error) {
+    // Do not fail room APIs when filesystem logging is unavailable (e.g. serverless runtime).
+    console.warn("Event log persistence unavailable.", {
+      roomId,
+      eventId: event.id,
+      error: error instanceof Error ? error.message : String(error),
+    });
   }
-  const line = [
-    escapeCsv(event.id),
-    escapeCsv(event.createdAt),
-    escapeCsv(event.type),
-    escapeCsv(event.message),
-  ].join(",");
-  appendFileSync(filePath, `${line}\n`, "utf8");
 };
 
 const addEvent = (room: RoomState, event: EventLog) => {

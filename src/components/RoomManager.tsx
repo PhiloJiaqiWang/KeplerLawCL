@@ -32,15 +32,27 @@ export function RoomManager({ roomId, role }: RoomManagerProps) {
 
   const loadRoom = useCallback(async () => {
     const response = await fetch(`/api/rooms/${roomId}`, { cache: "no-store" });
-    const payload = (await response.json()) as { room: RoomState };
+    if (!response.ok) {
+      throw new Error(`Unable to load room (${response.status}).`);
+    }
+    const payload = (await response.json()) as { room?: RoomState; error?: string };
+    if (!payload.room) {
+      throw new Error(payload.error ?? "Room payload is missing.");
+    }
     setRoom(payload.room);
   }, [roomId]);
 
   useEffect(() => {
     const initialLoad = setTimeout(() => {
-      void loadRoom();
+      void loadRoom().catch((error) => {
+        console.error("Initial room load failed", error);
+      });
     }, 0);
-    const interval = setInterval(() => void loadRoom(), 2000);
+    const interval = setInterval(() => {
+      void loadRoom().catch((error) => {
+        console.error("Room polling failed", error);
+      });
+    }, 2000);
     return () => {
       clearTimeout(initialLoad);
       clearInterval(interval);
