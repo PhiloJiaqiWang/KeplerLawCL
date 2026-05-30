@@ -256,8 +256,6 @@ export function SimulationRunner({
         tool: simulation === "Kepler Second Law" ? secondLawTool : undefined,
         timeIntervalSec:
           simulation === "Kepler Second Law" && secondLawTool === "Swept Area Tool" ? secondLawTimeInterval : undefined,
-        thirdLawTool: simulation === "Kepler Third Law" ? thirdLawTool : undefined,
-        thirdLawOrbit: simulation === "Kepler Third Law" ? thirdLawOrbit : undefined,
       });
       setSelectedIds([]);
     } catch (error) {
