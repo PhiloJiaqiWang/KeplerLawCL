@@ -32,6 +32,7 @@ export function StagePanel({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const currentProgress = room.progressBySimulation[room.currentSimulation];
   const currentStage = currentProgress.currentStage;
+  const stageTabs: Array<"Planning" | "Investigation" | "Discussion"> = ["Planning", "Investigation", "Discussion"];
   const maxMeasurements = getMaxMeasurementsForSimulation(room.currentSimulation);
   const measurementRemaining = Math.max(0, maxMeasurements - currentProgress.measurements.length);
 
@@ -210,12 +211,20 @@ export function StagePanel({
   return (
     <section className="h-full rounded-lg border border-slate-300 bg-slate-100 p-4">
       <h2 className="text-lg font-semibold text-slate-900">Workspace</h2>
-      <p className="mt-1 text-sm text-slate-700">
-        <strong>Current Stage:</strong> {currentStage}
-      </p>
-      <p className="mt-1 text-sm text-slate-700">
-        <strong>Task:</strong> {room.currentSimulation}
-      </p>
+      <div className="mt-3 flex flex-wrap gap-2">
+        {stageTabs.map((stage) => (
+          <span
+            key={stage}
+            className={`rounded-md border px-2 py-1 text-xs ${
+              stage === currentStage
+                ? "border-slate-900 bg-slate-900 text-white"
+                : "border-slate-300 bg-white text-slate-700"
+            }`}
+          >
+            {stage}
+          </span>
+        ))}
+      </div>
       <p className="mt-2 text-sm text-slate-600">
         {STAGE_OBJECTIVES_BY_SIMULATION[room.currentSimulation][currentStage]}
       </p>

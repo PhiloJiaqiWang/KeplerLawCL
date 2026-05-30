@@ -27,6 +27,7 @@ type RoomManagerProps = {
 export function RoomManager({ roomId, role }: RoomManagerProps) {
   const [room, setRoom] = useState<RoomState | null>(null);
   const [briefingAccepted, setBriefingAccepted] = useState(false);
+  const [knowledgeOpen, setKnowledgeOpen] = useState(false);
   const briefingKey = `briefing-accepted:${roomId}:${role}`;
 
   const loadRoom = useCallback(async () => {
@@ -161,6 +162,47 @@ export function RoomManager({ roomId, role }: RoomManagerProps) {
     participantA: room.participantA?.name ?? "Participant A",
     participantB: room.participantB?.name ?? "Participant B",
   };
+  const knowledgeBySimulation: Record<SimulationType, { title: string; basics: string[]; tips: string[] }> = {
+    "Kepler First Law": {
+      title: "Kepler First Law Essentials",
+      basics: [
+        "Test two competing hypotheses using measurements.",
+        "Hypothesis A (Circle): distances from orbit points to one shared center are roughly constant.",
+        "Hypothesis B (Ellipse): (distance to Focus 1 + distance to Focus 2) is roughly constant across points.",
+      ],
+      tips: [
+        "If focus sums stay similar across points, that supports Hypothesis B.",
+        "If center distances stay similar across points, that supports a circle model.",
+        "Use both participants' measurements to avoid one-sided sampling.",
+      ],
+    },
+    "Kepler Second Law": {
+      title: "Kepler Second Law Essentials",
+      basics: [
+        "Hold time interval constant when comparing swept areas.",
+        "Compare speed at near-star points vs far-star points.",
+        "Use multiple locations before claiming a trend.",
+      ],
+      tips: [
+        "Use `Swept Area Tool` with one fixed interval (e.g., always 10s) across points.",
+        "Pair each area observation with speed observations from similar regions.",
+        "If equal-time areas are similar while speed changes by position, your evidence is strong.",
+      ],
+    },
+    "Kepler Third Law": {
+      title: "Kepler Third Law Essentials",
+      basics: [
+        "Collect both period (P) and semi-major axis (a) for multiple orbits.",
+        "Use cross-orbit comparison instead of one-orbit reasoning.",
+      ],
+      tips: [
+        "For each selected orbit, complete both `Period` and `Axis` measurements.",
+        "Use the plot tool to compare exponent pairs (a, a^2, a^3) vs (P, P^2, P^3).",
+        "The best-supported model is the one with the clearest across-orbit consistency.",
+      ],
+    },
+  };
+  const knowledge = knowledgeBySimulation[room.currentSimulation];
 
   const acceptBriefing = () => {
     localStorage.setItem(briefingKey, "true");
@@ -178,14 +220,17 @@ export function RoomManager({ roomId, role }: RoomManagerProps) {
           <strong>Role:</strong> {role} {currentRoleName ? `(${currentRoleName})` : ""}
         </span>
         <span>
-          <strong>Activity:</strong> {room.currentActivity}
-        </span>
-        <span>
           <strong>Stage:</strong> {currentStage}
         </span>
         <span>
           <strong>Simulation:</strong> {room.currentSimulation}
         </span>
+        <button
+          onClick={() => setKnowledgeOpen(true)}
+          className="rounded-md border border-amber-300 bg-amber-100 px-3 py-1.5 text-xs font-semibold text-amber-900 shadow-sm hover:bg-amber-200"
+        >
+          Knowledge Base
+        </button>
         <AgentController value={room.agentCondition} onChange={setAgentCondition} />
       </header>
 
@@ -222,6 +267,40 @@ export function RoomManager({ roomId, role }: RoomManagerProps) {
       <div className="border-t border-slate-300 bg-white p-3">
         <EventLogger eventLogs={room.eventLogs} />
       </div>
+      {knowledgeOpen ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-2xl rounded-lg border border-slate-300 bg-white p-4 shadow-lg">
+            <div className="flex items-center justify-between gap-4">
+              <h3 className="text-base font-semibold text-slate-900">{knowledge.title}</h3>
+              <button
+                onClick={() => setKnowledgeOpen(false)}
+                className="rounded-md border border-slate-300 bg-white px-2 py-1 text-xs text-slate-700 hover:bg-slate-50"
+              >
+                Close
+              </button>
+            </div>
+            <p className="mt-1 text-xs text-slate-500">Current module: {room.currentSimulation}</p>
+            <div className="mt-4 grid gap-4 md:grid-cols-2">
+              <section className="rounded-md border border-slate-200 bg-slate-50 p-3">
+                <p className="text-sm font-medium text-slate-900">Core Basics</p>
+                <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-slate-700">
+                  {knowledge.basics.map((item) => (
+                    <li key={item}>{item}</li>
+                  ))}
+                </ul>
+              </section>
+              <section className="rounded-md border border-slate-200 bg-slate-50 p-3">
+                <p className="text-sm font-medium text-slate-900">How To Use In Game</p>
+                <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-slate-700">
+                  {knowledge.tips.map((item) => (
+                    <li key={item}>{item}</li>
+                  ))}
+                </ul>
+              </section>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
