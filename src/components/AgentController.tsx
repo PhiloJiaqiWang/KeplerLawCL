@@ -8,6 +8,11 @@ type AgentControllerProps = {
 };
 
 const options: AgentCondition[] = ["Control", "Assistive", "Observation"];
+const labelByCondition: Record<AgentCondition, string> = {
+  Control: "Summary",
+  Assistive: "Assistive",
+  Observation: "Observation",
+};
 
 export function AgentController({ value, onChange }: AgentControllerProps) {
   return (
@@ -20,7 +25,7 @@ export function AgentController({ value, onChange }: AgentControllerProps) {
       >
         {options.map((condition) => (
           <option key={condition} value={condition}>
-            {condition}
+            {labelByCondition[condition]}
           </option>
         ))}
       </select>

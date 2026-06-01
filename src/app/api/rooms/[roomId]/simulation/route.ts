@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+
+export const runtime = "nodejs";
 import { updateSimulation } from "@/lib/roomStore";
 import type { SimulationType } from "@/lib/types";
 

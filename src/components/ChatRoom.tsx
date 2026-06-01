@@ -1,12 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import type { ChatMessage, ParticipantRole } from "@/lib/types";
+import type { ChatMessage, ParticipantRole, SenderRole } from "@/lib/types";
 
 type ChatRoomProps = {
   role: ParticipantRole;
   messages: ChatMessage[];
-  displayNameByRole: Record<ParticipantRole, string>;
+  displayNameByRole: Record<SenderRole, string>;
   onSend: (content: string) => Promise<void>;
 };
 
@@ -38,7 +38,9 @@ export function ChatRoom({ role, messages, displayNameByRole, onSend }: ChatRoom
           <ul className="space-y-2 text-sm">
             {messages.map((message) => (
               <li key={message.id} className="rounded bg-white p-2 text-slate-800">
-                <p className="font-medium">{displayNameByRole[message.senderRole]}</p>
+                <p className={`font-medium ${message.senderRole === "agent" ? "text-indigo-700" : ""}`}>
+                  {displayNameByRole[message.senderRole]}
+                </p>
                 <p>{message.content}</p>
               </li>
             ))}

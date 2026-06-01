@@ -1,4 +1,5 @@
 export type ParticipantRole = "participantA" | "participantB";
+export type SenderRole = ParticipantRole | "agent";
 
 export type ParticipantSlot = {
   id: string;
@@ -13,7 +14,7 @@ export type SimulationType = "Kepler First Law" | "Kepler Second Law" | "Kepler 
 
 export type ChatMessage = {
   id: string;
-  senderRole: ParticipantRole;
+  senderRole: SenderRole;
   content: string;
   createdAt: string;
 };

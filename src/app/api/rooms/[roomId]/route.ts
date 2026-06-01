@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+
+export const runtime = "nodejs";
 import { createOrGetRoom } from "@/lib/roomStore";
 
 export async function GET(_: Request, context: { params: Promise<{ roomId: string }> }) {

@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+
+export const runtime = "nodejs";
 import { addMeasurement } from "@/lib/roomStore";
 import type { MeasurementPoint, MeasurementTarget, ParticipantRole } from "@/lib/types";
 

@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+
+export const runtime = "nodejs";
 import { advanceToDiscussion } from "@/lib/roomStore";
 
 export async function POST(_: Request, context: { params: Promise<{ roomId: string }> }) {

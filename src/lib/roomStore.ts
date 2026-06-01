@@ -1,8 +1,10 @@
 import { randomUUID } from "node:crypto";
 import { appendFileSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
+import { runControlSummaryIfDue } from "@/agents";
 import {
   type AgentCondition,
+  type ChatMessage,
   type EventLog,
   type MeasurementPoint,
   type MeasurementTarget,
@@ -22,6 +24,7 @@ const rooms = new Map<string, RoomState>();
 const initialStage: Stage = "Planning";
 export { MAX_MEASUREMENTS_PER_SIMULATION, MAX_MEASUREMENTS_THIRD_LAW, getMaxMeasurementsForSimulation };
 const EVENT_LOG_DIR = path.join(process.cwd(), "data", "event-logs");
+const CHAT_LOG_DIR = path.join(process.cwd(), "data", "chat-logs");
 
 const createInitialProgress = (): RoomState["progressBySimulation"] => ({
   "Kepler First Law": {
@@ -85,9 +88,49 @@ const addEvent = (room: RoomState, event: EventLog) => {
   appendEventToCsv(room.roomId, event);
 };
 
+const appendChatToCsv = (roomId: string, message: ChatMessage) => {
+  try {
+    mkdirSync(CHAT_LOG_DIR, { recursive: true });
+    const filePath = path.join(CHAT_LOG_DIR, `${roomId}.csv`);
+    if (!existsSync(filePath)) {
+      writeFileSync(filePath, "id,createdAt,senderRole,content\n", "utf8");
+    }
+    const line = [
+      escapeCsv(message.id),
+      escapeCsv(message.createdAt),
+      escapeCsv(message.senderRole),
+      escapeCsv(message.content),
+    ].join(",");
+    appendFileSync(filePath, `${line}\n`, "utf8");
+  } catch (error) {
+    console.warn("Chat log persistence unavailable.", {
+      roomId,
+      messageId: message.id,
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
+};
+
+const addAgentChat = (room: RoomState, content: string) => {
+  const message: ChatMessage = {
+    id: randomUUID(),
+    senderRole: "agent",
+    content,
+    createdAt: new Date().toISOString(),
+  };
+  room.chatMessages.push(message);
+  appendChatToCsv(room.roomId, message);
+};
+
 export const createOrGetRoom = (roomId: string): RoomState => {
   const existing = rooms.get(roomId);
-  if (existing) return existing;
+  if (existing) {
+    runControlSummaryIfDue(existing, {
+      appendChat: addAgentChat,
+      appendEvent: addEvent,
+    });
+    return existing;
+  }
 
   const room: RoomState = {
     roomId,
@@ -154,7 +197,7 @@ export const joinRole = (roomId: string, role: ParticipantRole, name: string): R
 export const postMessage = (roomId: string, role: ParticipantRole, content: string): RoomState => {
   const room = createOrGetRoom(roomId);
 
-  const message = {
+  const message: ChatMessage = {
     id: randomUUID(),
     senderRole: role,
     content,
@@ -162,6 +205,7 @@ export const postMessage = (roomId: string, role: ParticipantRole, content: stri
   };
 
   room.chatMessages.push(message);
+  appendChatToCsv(room.roomId, message);
   addEvent(room, {
     id: randomUUID(),
     type: "CHAT",

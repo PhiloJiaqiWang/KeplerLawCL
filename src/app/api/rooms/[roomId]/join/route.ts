@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+
+export const runtime = "nodejs";
 import { joinRole } from "@/lib/roomStore";
 import type { ParticipantRole } from "@/lib/types";
 

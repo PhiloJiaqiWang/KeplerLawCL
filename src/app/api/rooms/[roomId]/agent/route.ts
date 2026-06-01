@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+
+export const runtime = "nodejs";
 import { updateAgentCondition } from "@/lib/roomStore";
 import type { AgentCondition } from "@/lib/types";
 

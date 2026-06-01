@@ -16,6 +16,7 @@ import type {
   MeasurementTarget,
   ParticipantRole,
   RoomState,
+  SenderRole,
   SimulationType,
 } from "@/lib/types";
 
@@ -170,9 +171,10 @@ export function RoomManager({ roomId, role }: RoomManagerProps) {
   const currentProgress = room.progressBySimulation[room.currentSimulation];
   const maxMeasurements = getMaxMeasurementsForSimulation(room.currentSimulation);
   const measurementRemaining = Math.max(0, maxMeasurements - currentProgress.measurements.length);
-  const displayNameByRole: Record<ParticipantRole, string> = {
+  const displayNameByRole: Record<SenderRole, string> = {
     participantA: room.participantA?.name ?? "Participant A",
     participantB: room.participantB?.name ?? "Participant B",
+    agent: "NOVA",
   };
   const knowledgeBySimulation: Record<SimulationType, { title: string; basics: string[]; tips: string[] }> = {
     "Kepler First Law": {
