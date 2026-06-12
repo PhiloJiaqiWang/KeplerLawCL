@@ -41,7 +41,7 @@ export function ChatRoom({ role, messages, displayNameByRole, onSend }: ChatRoom
                 <p className={`font-medium ${message.senderRole === "agent" ? "text-indigo-700" : ""}`}>
                   {displayNameByRole[message.senderRole]}
                 </p>
-                <p>{message.content}</p>
+                <p className="whitespace-pre-wrap">{message.content}</p>
               </li>
             ))}
           </ul>
