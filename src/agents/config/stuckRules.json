@@ -1,0 +1,55 @@
+{
+  "version": 1,
+  "rules": [
+    {
+      "id": "claim_without_reason",
+      "label": "Claim without reason",
+      "definition": "A participant makes a claim, conclusion, or proposed action without giving evidence, reasoning, or reference to the simulation.",
+      "monitorSignals": [
+        "A conclusion is stated without because, evidence, measurement, or comparison.",
+        "A participant pushes a next step without explaining why.",
+        "The partner accepts or responds without asking for reasoning."
+      ]
+    },
+    {
+      "id": "observation_without_interpretation",
+      "label": "Observation without interpretation",
+      "definition": "Participants describe what they see or measure but do not explain what it means for the task or hypothesis.",
+      "monitorSignals": [
+        "Messages report observations, numbers, or patterns only.",
+        "No one connects the observation to an explanation or decision.",
+        "The conversation stays descriptive instead of interpretive."
+      ]
+    },
+    {
+      "id": "quick_agreement",
+      "label": "Quick agreement",
+      "definition": "Participants agree too quickly without evaluating alternatives, checking evidence, or clarifying understanding.",
+      "monitorSignals": [
+        "A suggestion is followed by brief agreement such as yes, ok, sure, or let's do that.",
+        "There is no challenge, elaboration, or reasoning after agreement.",
+        "The group moves on before explaining why the choice makes sense."
+      ]
+    },
+    {
+      "id": "unequal_participation",
+      "label": "Unequal participation",
+      "definition": "One participant is carrying most of the conversation while the other contributes little or only minimal acknowledgements.",
+      "monitorSignals": [
+        "One participant contributes substantially more turns or detail than the other.",
+        "The quieter participant mostly sends short acknowledgements.",
+        "The conversation does not show shared reasoning."
+      ]
+    }
+  ],
+  "decisionGuidance": {
+    "shouldFlagIf": [
+      "At least one rule is clearly present in the recent exchange.",
+      "The pattern is likely to slow, narrow, or weaken collaboration."
+    ],
+    "shouldNotFlagIf": [
+      "The partners are already repairing the issue on their own.",
+      "The exchange is brief but still shows reasoning, interpretation, or balanced participation."
+    ]
+  }
+}

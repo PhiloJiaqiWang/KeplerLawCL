@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AgentController } from "@/components/AgentController";
 import { ChatRoom } from "@/components/ChatRoom";
+import { DeveloperPanel } from "@/components/DeveloperPanel";
 import { EventLogger } from "@/components/EventLogger";
 import { MissionBriefing } from "@/components/MissionBriefing";
 import { SimulationRunner } from "@/components/SimulationRunner";
@@ -10,6 +11,8 @@ import { StagePanel } from "@/components/StagePanel";
 import { StagePlaceholder } from "@/components/StagePlaceholder";
 import { WORKFLOW_V2_ENABLED } from "@/lib/flags";
 import { getMaxMeasurementsForSimulation } from "@/lib/measurementLimits";
+import type { OpenAIDebugTrace } from "@/agents/debug";
+import type { OpenAIStatus } from "@/agents/status";
 import type {
   AgentCondition,
   MeasurementPoint,
@@ -27,21 +30,41 @@ type RoomManagerProps = {
 
 export function RoomManager({ roomId, role }: RoomManagerProps) {
   const [room, setRoom] = useState<RoomState | null>(null);
+  const [developerMode, setDeveloperMode] = useState(false);
+  const [openAIDebugTraces, setOpenAIDebugTraces] = useState<OpenAIDebugTrace[]>([]);
+  const [openAIStatus, setOpenAIStatus] = useState<OpenAIStatus>({
+    state: "unavailable",
+    detail: "Checking OpenAI status.",
+  });
   const [briefingAccepted, setBriefingAccepted] = useState(false);
   const [knowledgeOpen, setKnowledgeOpen] = useState(false);
   const briefingKey = `briefing-accepted:${roomId}:${role}`;
+  const developerModeKey = `developer-mode:${roomId}:${role}`;
 
   const loadRoom = useCallback(async () => {
-    const response = await fetch(`/api/rooms/${roomId}`, { cache: "no-store" });
+    const query = developerMode ? "?debug=1" : "";
+    const response = await fetch(`/api/rooms/${roomId}${query}`, { cache: "no-store" });
     if (!response.ok) {
       throw new Error(`Unable to load room (${response.status}).`);
     }
-    const payload = (await response.json()) as { room?: RoomState; error?: string };
+    const payload = (await response.json()) as {
+      room?: RoomState;
+      openAIStatus?: OpenAIStatus;
+      openAIDebug?: { traces?: OpenAIDebugTrace[] };
+      error?: string;
+    };
     if (!payload.room) {
       throw new Error(payload.error ?? "Room payload is missing.");
     }
     setRoom(payload.room);
-  }, [roomId]);
+    setOpenAIStatus(
+      payload.openAIStatus ?? {
+        state: "unavailable",
+        detail: "OpenAI status did not load.",
+      },
+    );
+    setOpenAIDebugTraces(payload.openAIDebug?.traces ?? []);
+  }, [developerMode, roomId]);
 
   useEffect(() => {
     const initialLoad = setTimeout(() => {
@@ -64,9 +87,11 @@ export function RoomManager({ roomId, role }: RoomManagerProps) {
     const init = setTimeout(() => {
       const saved = localStorage.getItem(briefingKey);
       setBriefingAccepted(saved === "true");
+      const savedDeveloperMode = localStorage.getItem(developerModeKey);
+      setDeveloperMode(savedDeveloperMode === "true");
     }, 0);
     return () => clearTimeout(init);
-  }, [briefingKey]);
+  }, [briefingKey, developerModeKey]);
 
   const sendMessage = async (content: string) => {
     const response = await fetch(`/api/rooms/${roomId}/messages`, {
@@ -223,6 +248,12 @@ export function RoomManager({ roomId, role }: RoomManagerProps) {
     setBriefingAccepted(true);
   };
 
+  const toggleDeveloperMode = () => {
+    const nextValue = !developerMode;
+    setDeveloperMode(nextValue);
+    localStorage.setItem(developerModeKey, String(nextValue));
+  };
+
   return (
     <div className="flex h-screen flex-col bg-slate-100">
       {!briefingAccepted ? <MissionBriefing onProceed={acceptBriefing} /> : null}
@@ -244,6 +275,16 @@ export function RoomManager({ roomId, role }: RoomManagerProps) {
           className="rounded-md border border-amber-300 bg-amber-100 px-3 py-1.5 text-xs font-semibold text-amber-900 shadow-sm hover:bg-amber-200"
         >
           Knowledge Base
+        </button>
+        <button
+          onClick={toggleDeveloperMode}
+          className={`rounded-md px-3 py-1.5 text-xs font-semibold shadow-sm ${
+            developerMode
+              ? "border border-slate-900 bg-slate-900 text-white"
+              : "border border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
+          }`}
+        >
+          Developer Mode {developerMode ? "On" : "Off"}
         </button>
         <AgentController value={room.agentCondition} onChange={setAgentCondition} />
       </header>
@@ -278,7 +319,8 @@ export function RoomManager({ roomId, role }: RoomManagerProps) {
         />
       </main>
 
-      <div className="border-t border-slate-300 bg-white p-3">
+      <div className="border-t border-slate-300 bg-white p-3 space-y-3">
+        {developerMode ? <DeveloperPanel openAIStatus={openAIStatus} traces={openAIDebugTraces} /> : null}
         <EventLogger eventLogs={room.eventLogs} />
       </div>
       {knowledgeOpen ? (

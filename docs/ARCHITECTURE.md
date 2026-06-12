@@ -135,8 +135,9 @@ Core types:
 - `ParticipantRole`: `"participantA" | "participantB"`
 - `ParticipantSlot`: `{ id, name, joinedAt }`
 - `Activity`: `"Orientation" | "Simulation" | "Debrief"`
-- `Stage`: `"Stage 1" | "Stage 2" | "Stage 3"`
-- `AgentCondition`: `"Control" | "Assistive" | "Observation"`
+- `Stage`: `"Planning" | "Investigation" | "Discussion" | "Submission"`
+- `AgentCondition`: `"Situational" | "Reflective" | "Adaptive"`
+- `MonitorDecision`: `{ stuck, ruleId, confidence, rationale }`
 
 Messaging/logging:
 - `ChatMessage`: `{ id, senderRole, content, createdAt }`
@@ -148,8 +149,10 @@ Room schema:
   - `participantA`
   - `participantB`
   - `currentActivity`
-  - `currentStage`
+  - `currentSimulation`
+  - `progressBySimulation`
   - `agentCondition`
+  - `pendingAgentFollowUp`
   - `chatMessages`
   - `eventLogs`
 
@@ -166,6 +169,13 @@ Exported operations:
 - `joinRole(roomId, role, name)`
 - `postMessage(roomId, role, content)`
 - `updateAgentCondition(roomId, condition)`
+
+Agent orchestration:
+- `Situational` posts a timed summary every three minutes while collaboration is active.
+- `Reflective` runs a monitor over recent chat after participant messages and, if stuck, asks students to explain what they are doing and why.
+- `Adaptive` uses the same stuck monitor, asks for explanation first, then posts adaptive support after the next participant response.
+- Stuck-monitor rules live in `src/agents/config/stuckRules.json`.
+- Adaptive support rules live in `src/agents/config/adaptiveRules.json`.
 
 Role protection:
 - `joinRole` throws `ROLE_TAKEN` when slot is occupied.
@@ -214,7 +224,7 @@ File: `src/app/api/rooms/[roomId]/agent/route.ts`
 
 Request body:
 ```json
-{ "condition": "Assistive" }
+{ "condition": "Reflective" }
 ```
 
 Responses:
@@ -253,7 +263,7 @@ File: `src/components/ChatRoom.tsx`
 ### `AgentController`
 File: `src/components/AgentController.tsx`
 
-- Top-bar selector for `Control / Assistive / Observation`.
+- Top-bar selector for `Situational / Reflective / Adaptive`.
 
 ### `EventLogger`
 File: `src/components/EventLogger.tsx`

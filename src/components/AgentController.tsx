@@ -7,11 +7,11 @@ type AgentControllerProps = {
   onChange: (condition: AgentCondition) => Promise<void>;
 };
 
-const options: AgentCondition[] = ["Control", "Assistive", "Observation"];
+const options: AgentCondition[] = ["Situational", "Reflective", "Adaptive"];
 const labelByCondition: Record<AgentCondition, string> = {
-  Control: "Summary",
-  Assistive: "Assistive",
-  Observation: "Observation",
+  Situational: "Situational",
+  Reflective: "Reflective",
+  Adaptive: "Adaptive",
 };
 
 export function AgentController({ value, onChange }: AgentControllerProps) {

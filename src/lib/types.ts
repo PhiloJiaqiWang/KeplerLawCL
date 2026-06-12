@@ -9,8 +9,14 @@ export type ParticipantSlot = {
 
 export type Activity = "Orientation" | "Simulation" | "Debrief";
 export type Stage = "Planning" | "Investigation" | "Discussion" | "Submission";
-export type AgentCondition = "Control" | "Assistive" | "Observation";
+export type AgentCondition = "Situational" | "Reflective" | "Adaptive";
 export type SimulationType = "Kepler First Law" | "Kepler Second Law" | "Kepler Third Law";
+export type MonitorDecision = {
+  stuck: boolean;
+  ruleId: string | null;
+  confidence: "low" | "medium" | "high";
+  rationale: string;
+};
 
 export type ChatMessage = {
   id: string;
@@ -73,6 +79,11 @@ export type RoomState = {
   currentSimulation: SimulationType;
   progressBySimulation: Record<SimulationType, SimulationProgress>;
   agentCondition: AgentCondition;
+  pendingAgentFollowUp: {
+    kind: "adaptive_support";
+    monitorDecision: MonitorDecision;
+    requestedAt: string;
+  } | null;
   chatMessages: ChatMessage[];
   eventLogs: EventLog[];
 };

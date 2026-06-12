@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { appendFileSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import { runControlSummaryIfDue } from "@/agents";
+import { runControlSummaryIfDue, runFacilitatorIfNeeded } from "@/agents";
 import {
   type AgentCondition,
   type ChatMessage,
@@ -139,7 +139,8 @@ export const createOrGetRoom = (roomId: string): RoomState => {
     currentActivity: "Orientation",
     currentSimulation: "Kepler First Law",
     progressBySimulation: createInitialProgress(),
-    agentCondition: "Control",
+    agentCondition: "Situational",
+    pendingAgentFollowUp: null,
     chatMessages: [],
     eventLogs: [],
   };
@@ -213,12 +214,18 @@ export const postMessage = (roomId: string, role: ParticipantRole, content: stri
     createdAt: message.createdAt,
   });
 
+  runFacilitatorIfNeeded(room, {
+    appendChat: addAgentChat,
+    appendEvent: addEvent,
+  });
+
     return room;
 };
 
 export const updateAgentCondition = (roomId: string, condition: AgentCondition): RoomState => {
   const room = createOrGetRoom(roomId);
   room.agentCondition = condition;
+  room.pendingAgentFollowUp = null;
   addEvent(room, {
     id: randomUUID(),
     type: "SYSTEM",

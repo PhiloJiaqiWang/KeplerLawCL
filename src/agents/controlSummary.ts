@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { requestOpenAIText } from "@/agents/openai";
 import type { EventLog, RoomState } from "@/lib/types";
 
 type SummaryDeps = {
@@ -6,7 +7,6 @@ type SummaryDeps = {
   appendEvent: (room: RoomState, event: EventLog) => void;
 };
 
-const OPENAI_URL = "https://api.openai.com/v1/responses";
 const SUMMARY_INTERVAL_MS = 3 * 60 * 1000;
 const SUMMARY_WINDOW_MS = 30 * 60 * 1000;
 const lastSummaryAtByRoom = new Map<string, number>();
@@ -40,59 +40,24 @@ const buildPromptPayload = (room: RoomState) => {
   );
 };
 
-const extractText = (payload: unknown): string => {
-  if (!payload || typeof payload !== "object") return "";
-  const output = (payload as { output?: Array<{ content?: Array<{ type?: string; text?: string }> }> }).output ?? [];
-  const parts: string[] = [];
-  for (const item of output) {
-    for (const c of item.content ?? []) {
-      if (c.type === "output_text" && c.text) parts.push(c.text);
-    }
-  }
-  return parts.join("\n").trim();
-};
-
 const generateSummary = async (room: RoomState): Promise<string | null> => {
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) return null;
-
-  const model = process.env.AGENT_OPENAI_MODEL ?? "gpt-4.1-mini";
   const systemPrompt =
     "You are NOVA, a collaboration facilitator. Summarize what has happened so far for two participants. "
     + "Write 3 short bullet points: progress, collaboration quality, and next-step recommendation. "
     + "Do not reveal final scientific answers.";
   const userPayload = buildPromptPayload(room);
-
-console.log("[NOVA system prompt]", systemPrompt);
-console.log("[NOVA user payload]", userPayload);
-
-  const response = await fetch(OPENAI_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({
-      model,
-      input: [
-        { role: "system", content: [{ type: "input_text", text: systemPrompt }] },
-        { role: "user", content: [{ type: "input_text", text: userPayload }] },
-      ],
-      max_output_tokens: 220,
-      temperature: 0.4,
-    }),
+  return requestOpenAIText({
+    label: "Situational summary",
+    roomId: room.roomId,
+    systemPrompt,
+    userPrompt: userPayload,
+    maxOutputTokens: 220,
+    temperature: 0.4,
   });
-
-  if (!response.ok) {
-    throw new Error(`OpenAI summary request failed (${response.status})`);
-  }
-  const payload = await response.json();
-  const text = extractText(payload);
-  return text || null;
 };
 
 export const runControlSummaryIfDue = (room: RoomState, deps: SummaryDeps) => {
-  if (room.agentCondition !== "Control") return;
+  if (room.agentCondition !== "Situational") return;
   if (!room.participantA || !room.participantB) return;
   const firstParticipantChat = room.chatMessages.find(
     (message) => message.senderRole === "participantA" || message.senderRole === "participantB",
