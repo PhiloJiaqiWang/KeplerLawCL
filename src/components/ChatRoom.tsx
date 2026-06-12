@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { ChatMessage, ParticipantRole, SenderRole } from "@/lib/types";
 
 type ChatRoomProps = {
@@ -13,6 +13,13 @@ type ChatRoomProps = {
 export function ChatRoom({ role, messages, displayNameByRole, onSend }: ChatRoomProps) {
   const [value, setValue] = useState("");
   const [isSending, setIsSending] = useState(false);
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+    container.scrollTop = container.scrollHeight;
+  }, [messages]);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -29,9 +36,12 @@ export function ChatRoom({ role, messages, displayNameByRole, onSend }: ChatRoom
   };
 
   return (
-    <section className="flex h-full flex-col rounded-lg border border-slate-300 bg-white p-4">
+    <section className="flex h-full min-h-0 flex-col overflow-hidden rounded-lg border border-slate-300 bg-white p-4">
       <h2 className="text-lg font-semibold text-slate-900">Shared Chatroom</h2>
-      <div className="mt-3 flex-1 overflow-y-auto rounded border border-slate-200 bg-slate-50 p-3">
+      <div
+        ref={scrollContainerRef}
+        className="mt-3 min-h-0 flex-1 overflow-y-auto rounded border border-slate-200 bg-slate-50 p-3"
+      >
         {messages.length === 0 ? (
           <p className="text-sm text-slate-500">No messages yet.</p>
         ) : (

@@ -289,7 +289,7 @@ export function RoomManager({ roomId, role }: RoomManagerProps) {
         <AgentController value={room.agentCondition} onChange={setAgentCondition} />
       </header>
 
-      <main className="grid flex-1 grid-cols-1 gap-4 p-4 lg:grid-cols-3">
+      <main className="grid min-h-0 flex-1 grid-cols-1 gap-4 p-4 lg:grid-cols-3">
         <SimulationRunner
           simulation={room.currentSimulation}
           onChange={setSimulation}
@@ -319,10 +319,12 @@ export function RoomManager({ roomId, role }: RoomManagerProps) {
         />
       </main>
 
-      <div className="border-t border-slate-300 bg-white p-3 space-y-3">
-        {developerMode ? <DeveloperPanel openAIStatus={openAIStatus} traces={openAIDebugTraces} /> : null}
-        <EventLogger eventLogs={room.eventLogs} />
-      </div>
+      {developerMode ? (
+        <div className="border-t border-slate-300 bg-white p-3 space-y-3">
+          <DeveloperPanel openAIStatus={openAIStatus} traces={openAIDebugTraces} />
+          <EventLogger eventLogs={room.eventLogs} />
+        </div>
+      ) : null}
       {knowledgeOpen ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <div className="w-full max-w-2xl rounded-lg border border-slate-300 bg-white p-4 shadow-lg">

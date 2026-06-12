@@ -209,7 +209,7 @@ export function StagePanel({
   };
 
   return (
-    <section className="h-full rounded-lg border border-slate-300 bg-slate-100 p-4">
+    <section className="h-full overflow-y-auto rounded-lg border border-slate-300 bg-slate-100 p-4">
       <h2 className="text-lg font-semibold text-slate-900">Workspace</h2>
       <div className="mt-3 flex flex-wrap gap-2">
         {stageTabs.map((stage) => (
