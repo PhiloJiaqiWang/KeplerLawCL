@@ -367,10 +367,6 @@ export function SimulationRunner({
               );
             })}
           </svg>
-          <p className="mt-2 text-xs text-slate-600">
-            Access control: Participant A can inspect left-side points (L1-L3), Participant B can inspect right-side
-            points (R1-R3). Center and two foci are visible to both.
-          </p>
           {currentStage !== "Investigation" ? (
             <p className="mt-1 text-xs text-amber-700">Measurements unlock when stage reaches Investigation.</p>
           ) : null}
@@ -483,10 +479,6 @@ export function SimulationRunner({
               );
             })}
           </svg>
-          <p className="mt-2 text-xs text-slate-600">
-            Access control: Participant A can inspect left-side points (L1-L3), Participant B can inspect right-side
-            points (R1-R3). Center and two foci are visible to both.
-          </p>
           <p className="mt-1 text-xs text-slate-600">
             Choose a tool and time interval, then measure one accessible side point.
           </p>

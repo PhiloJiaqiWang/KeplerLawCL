@@ -268,6 +268,10 @@ export function StagePanel({
                     circular or elliptical.
                   </p>
                   <p className="mt-1">
+                    Participant A can inspect left-side points (L1-L3), Participant B can inspect right-side
+                    points (R1-R3). Center and two foci are visible to both.
+                  </p>
+                  <p className="mt-1">
                     Include: 1) which orbit points each of you will inspect, 2) which distances each person will
                     measure, 3) what result would support a circular model vs an elliptical model.
                   </p>
@@ -285,6 +289,10 @@ export function StagePanel({
                   </p>
                   <p className="mt-2">
                     Work with your partner to determine whether the motion follows a hidden underlying rule.
+                  </p>
+                  <p className="mt-2">
+                    Participant A can inspect left-side points (L1-L3), Participant B can inspect right-side
+                    points (R1-R3). Center and two foci are visible to both.
                   </p>
                   <p className="mt-2 font-medium">Both participants can use:</p>
                   <p className="mt-2">
