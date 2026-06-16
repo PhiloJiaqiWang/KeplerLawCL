@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { appendFileSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import { runControlSummaryIfDue, runFacilitatorIfNeeded } from "@/agents";
+import { runControlSummaryOnStuckIfNeeded, runFacilitatorIfNeeded } from "@/agents";
 import {
   type AgentCondition,
   type ChatMessage,
@@ -125,10 +125,6 @@ const addAgentChat = (room: RoomState, content: string) => {
 export const createOrGetRoom = (roomId: string): RoomState => {
   const existing = rooms.get(roomId);
   if (existing) {
-    runControlSummaryIfDue(existing, {
-      appendChat: addAgentChat,
-      appendEvent: addEvent,
-    });
     return existing;
   }
 
@@ -215,6 +211,10 @@ export const postMessage = (roomId: string, role: ParticipantRole, content: stri
   });
 
   runFacilitatorIfNeeded(room, {
+    appendChat: addAgentChat,
+    appendEvent: addEvent,
+  });
+  runControlSummaryOnStuckIfNeeded(room, {
     appendChat: addAgentChat,
     appendEvent: addEvent,
   });
