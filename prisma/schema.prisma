@@ -15,3 +15,50 @@ model RoomSnapshot {
   updatedAt DateTime @updatedAt
 }
 
+model ChatLogRecord {
+  id         String   @id
+  roomId     String
+  senderRole String
+  content    String
+  createdAt  DateTime
+  loggedAt   DateTime @default(now())
+
+  @@index([roomId, createdAt])
+}
+
+model EventLogRecord {
+  id        String   @id
+  roomId    String
+  type      String
+  message   String
+  activity  String?
+  simulation String?
+  stage     String?
+  createdAt DateTime
+  loggedAt  DateTime @default(now())
+
+  @@index([roomId, createdAt])
+}
+
+model AgentTraceRecord {
+  id              String   @id
+  roomId          String?
+  label           String
+  model           String
+  activity        String?
+  simulation      String?
+  stage           String?
+  systemPrompt    String
+  userPrompt      String
+  maxOutputTokens Int
+  temperature     Float
+  ok              Boolean
+  status          Int?
+  responseText    String?
+  responseError   String?
+  createdAt       DateTime
+  loggedAt        DateTime @default(now())
+
+  @@index([roomId, createdAt])
+  @@index([label, createdAt])
+}

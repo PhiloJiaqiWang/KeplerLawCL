@@ -1,6 +1,4 @@
 import { randomUUID } from "node:crypto";
-import { appendFileSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
-import path from "node:path";
 import { runControlSummaryOnStuckIfNeeded, runFacilitatorIfNeeded } from "@/agents";
 import {
   type AgentCondition,
@@ -19,12 +17,11 @@ import {
   THIRD_LAW_MAX_MEASUREMENTS as MAX_MEASUREMENTS_THIRD_LAW,
   getMaxMeasurementsForSimulation,
 } from "@/lib/measurementLimits";
+import { prisma } from "@/lib/prisma";
 
 const rooms = new Map<string, RoomState>();
 const initialStage: Stage = "Planning";
 export { MAX_MEASUREMENTS_PER_SIMULATION, MAX_MEASUREMENTS_THIRD_LAW, getMaxMeasurementsForSimulation };
-const EVENT_LOG_DIR = path.join(process.cwd(), "data", "event-logs");
-const CHAT_LOG_DIR = path.join(process.cwd(), "data", "chat-logs");
 
 const createInitialProgress = (): RoomState["progressBySimulation"] => ({
   "Kepler First Law": {
@@ -57,25 +54,32 @@ const defaultEvent = (roomId: string): EventLog => ({
   createdAt: new Date().toISOString(),
 });
 
-const escapeCsv = (value: string) => `"${value.replace(/"/g, '""')}"`;
+const getRoomContext = (room: RoomState) => ({
+  activity: room.currentActivity,
+  simulation: room.currentSimulation,
+  stage: room.progressBySimulation[room.currentSimulation].currentStage,
+});
 
-const appendEventToCsv = (roomId: string, event: EventLog) => {
+const persistEventToPostgres = async (roomId: string, event: EventLog) => {
   try {
-    mkdirSync(EVENT_LOG_DIR, { recursive: true });
-    const filePath = path.join(EVENT_LOG_DIR, `${roomId}.csv`);
-    if (!existsSync(filePath)) {
-      writeFileSync(filePath, "id,createdAt,type,message\n", "utf8");
-    }
-    const line = [
-      escapeCsv(event.id),
-      escapeCsv(event.createdAt),
-      escapeCsv(event.type),
-      escapeCsv(event.message),
-    ].join(",");
-    appendFileSync(filePath, `${line}\n`, "utf8");
+    const room = rooms.get(roomId) ?? null;
+    const context = room ? getRoomContext(room) : { activity: null, simulation: null, stage: null };
+    await prisma.eventLogRecord.upsert({
+      where: { id: event.id },
+      update: {},
+      create: {
+        id: event.id,
+        roomId,
+        type: event.type,
+        message: event.message,
+        activity: context.activity,
+        simulation: context.simulation,
+        stage: context.stage,
+        createdAt: new Date(event.createdAt),
+      },
+    });
   } catch (error) {
-    // Do not fail room APIs when filesystem logging is unavailable (e.g. serverless runtime).
-    console.warn("Event log persistence unavailable.", {
+    console.warn("Event log PostgreSQL persistence unavailable.", {
       roomId,
       eventId: event.id,
       error: error instanceof Error ? error.message : String(error),
@@ -85,25 +89,24 @@ const appendEventToCsv = (roomId: string, event: EventLog) => {
 
 const addEvent = (room: RoomState, event: EventLog) => {
   room.eventLogs.push(event);
-  appendEventToCsv(room.roomId, event);
+  void persistEventToPostgres(room.roomId, event);
 };
 
-const appendChatToCsv = (roomId: string, message: ChatMessage) => {
+const persistChatToPostgres = async (roomId: string, message: ChatMessage) => {
   try {
-    mkdirSync(CHAT_LOG_DIR, { recursive: true });
-    const filePath = path.join(CHAT_LOG_DIR, `${roomId}.csv`);
-    if (!existsSync(filePath)) {
-      writeFileSync(filePath, "id,createdAt,senderRole,content\n", "utf8");
-    }
-    const line = [
-      escapeCsv(message.id),
-      escapeCsv(message.createdAt),
-      escapeCsv(message.senderRole),
-      escapeCsv(message.content),
-    ].join(",");
-    appendFileSync(filePath, `${line}\n`, "utf8");
+    await prisma.chatLogRecord.upsert({
+      where: { id: message.id },
+      update: {},
+      create: {
+        id: message.id,
+        roomId,
+        senderRole: message.senderRole,
+        content: message.content,
+        createdAt: new Date(message.createdAt),
+      },
+    });
   } catch (error) {
-    console.warn("Chat log persistence unavailable.", {
+    console.warn("Chat log PostgreSQL persistence unavailable.", {
       roomId,
       messageId: message.id,
       error: error instanceof Error ? error.message : String(error),
@@ -119,7 +122,7 @@ const addAgentChat = (room: RoomState, content: string) => {
     createdAt: new Date().toISOString(),
   };
   room.chatMessages.push(message);
-  appendChatToCsv(room.roomId, message);
+  void persistChatToPostgres(room.roomId, message);
 };
 
 export const createOrGetRoom = (roomId: string): RoomState => {
@@ -202,7 +205,7 @@ export const postMessage = (roomId: string, role: ParticipantRole, content: stri
   };
 
   room.chatMessages.push(message);
-  appendChatToCsv(room.roomId, message);
+  void persistChatToPostgres(room.roomId, message);
   addEvent(room, {
     id: randomUUID(),
     type: "CHAT",

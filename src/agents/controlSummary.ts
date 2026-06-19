@@ -50,6 +50,11 @@ const generateSummary = async (room: RoomState): Promise<string | null> => {
   return requestOpenAIText({
     label: "Situational summary",
     roomId: room.roomId,
+    context: {
+      activity: room.currentActivity,
+      simulation: room.currentSimulation,
+      stage: room.progressBySimulation[room.currentSimulation].currentStage,
+    },
     systemPrompt,
     userPrompt: userPayload,
     maxOutputTokens: 220,

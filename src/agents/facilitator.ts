@@ -47,6 +47,11 @@ const buildReflectivePrompt = async (room: RoomState, decision: MonitorDecision)
   return requestOpenAIText({
     label: "Reflective prompt",
     roomId: room.roomId,
+    context: {
+      activity: room.currentActivity,
+      simulation: room.currentSimulation,
+      stage: room.progressBySimulation[room.currentSimulation].currentStage,
+    },
     systemPrompt,
     userPrompt,
     maxOutputTokens: 180,
@@ -90,6 +95,11 @@ const buildAdaptiveSupport = async (
   return requestOpenAIText({
     label: "Adaptive support",
     roomId: room.roomId,
+    context: {
+      activity: room.currentActivity,
+      simulation: room.currentSimulation,
+      stage: room.progressBySimulation[room.currentSimulation].currentStage,
+    },
     systemPrompt,
     userPrompt,
     maxOutputTokens: 200,

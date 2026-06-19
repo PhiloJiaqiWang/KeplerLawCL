@@ -1,4 +1,4 @@
-import { addOpenAIDebugTrace } from "@/agents/debug";
+import { addOpenAIDebugTrace, type AgentTraceContext } from "@/agents/debug";
 
 const OPENAI_URL = "https://api.openai.com/v1/responses";
 
@@ -40,6 +40,11 @@ export const hasOpenAIKey = (): boolean => Boolean(process.env.OPENAI_API_KEY);
 export const requestOpenAIText = async ({
   label = "OpenAI request",
   roomId = null,
+  context = {
+    activity: null,
+    simulation: null,
+    stage: null,
+  },
   systemPrompt,
   userPrompt,
   model = process.env.AGENT_OPENAI_MODEL ?? "gpt-4.1-mini",
@@ -48,6 +53,7 @@ export const requestOpenAIText = async ({
 }: {
   label?: string;
   roomId?: string | null;
+  context?: AgentTraceContext;
   systemPrompt: string;
   userPrompt: string;
   model?: string;
@@ -93,6 +99,7 @@ export const requestOpenAIText = async ({
       label,
       model,
       roomId,
+      context,
       request: {
         systemPrompt,
         userPrompt,
@@ -116,6 +123,7 @@ export const requestOpenAIText = async ({
     label,
     model,
     roomId,
+    context,
     request: {
       systemPrompt,
       userPrompt,
@@ -135,6 +143,7 @@ export const requestOpenAIText = async ({
 export const requestOpenAIJson = async <T>({
   label,
   roomId,
+  context,
   systemPrompt,
   userPrompt,
   model,
@@ -143,6 +152,7 @@ export const requestOpenAIJson = async <T>({
 }: {
   label?: string;
   roomId?: string | null;
+  context?: AgentTraceContext;
   systemPrompt: string;
   userPrompt: string;
   model?: string;
@@ -152,6 +162,7 @@ export const requestOpenAIJson = async <T>({
   const text = await requestOpenAIText({
     label,
     roomId,
+    context,
     systemPrompt,
     userPrompt,
     model,

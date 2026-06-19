@@ -75,6 +75,11 @@ export const monitorConversation = async (room: RoomState): Promise<MonitorDecis
   return requestOpenAIJson<MonitorDecision>({
     label: "Stuck monitor",
     roomId: room.roomId,
+    context: {
+      activity: room.currentActivity,
+      simulation: room.currentSimulation,
+      stage: room.progressBySimulation[room.currentSimulation].currentStage,
+    },
     systemPrompt,
     userPrompt,
     model: process.env.AGENT_OPENAI_MODEL ?? "gpt-4.1-mini",
