@@ -424,9 +424,7 @@ export function SimulationRunner({
                 Ready: {selectedMeasurement.point} | {secondLawTool}
                 {secondLawTool === "Swept Area Tool" ? ` | ${secondLawTimeInterval}s` : ""}
               </span>
-            ) : (
-              <span className="text-xs text-slate-600">Select 1 side point to run the selected tool.</span>
-            )}
+            ) : null}
             <span className="text-xs font-medium text-slate-700">Energy: {measurementRemaining}/{maxMeasurements}</span>
           </div>
           <svg viewBox="0 0 440 260" className="h-[240px] w-full">
@@ -486,6 +484,7 @@ export function SimulationRunner({
           <p className="mt-1 text-xs text-slate-600">
             Choose a tool and time interval, then measure one accessible side point.
           </p>
+          <p className="mt-1 text-xs text-slate-600">Select 1 side point to run the selected tool.</p>
           {currentStage !== "Investigation" ? (
             <p className="mt-1 text-xs text-amber-700">Measurements unlock when stage reaches Investigation.</p>
           ) : null}

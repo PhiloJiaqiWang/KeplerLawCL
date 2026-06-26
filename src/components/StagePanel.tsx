@@ -125,13 +125,13 @@ export function StagePanel({
     room.currentSimulation === "Kepler Second Law"
       ? "Based on your measurements, how does speed change when the exoplanet is closer to vs farther from the star?"
       : room.currentSimulation === "Kepler Third Law"
-        ? "How does orbital period change from inner to outer orbit based on your measurements?"
+        ? "How does the orbital period change from inner to outer orbits based on your measurements?"
       : "Is the orbit more consistent with a circle or ellipse? Why?";
   const discussionQuestion2 =
     room.currentSimulation === "Kepler Second Law"
       ? "For equal time intervals, do the swept areas stay approximately consistent across locations? Which records support your claim?"
       : room.currentSimulation === "Kepler Third Law"
-        ? "What relationship did you find from your measurements between orbital period and semi-major axis?"
+        ? "What relationship did you observe between orbital period and semi-major axis across the different orbits?"
       : "Which measurements best support your conclusion?";
   const debriefText =
     room.currentSimulation === "Kepler Second Law"
@@ -260,21 +260,24 @@ export function StagePanel({
           ) : (
             <form onSubmit={submit} className="mt-3 rounded-md border border-slate-300 bg-white p-3">
               <label className="text-sm font-medium text-slate-800" htmlFor="plan-input">
-                Submit your plan
+                Submit your plan:
               </label>
               {room.currentSimulation === "Kepler First Law" ? (
                 <div className="mt-2 rounded-md border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
                   <p className="mt-1">
-                    Coordinate with your partner in chat. Build one shared plan to test whether this orbit is
-                    circular or elliptical.
+                    Before using the simulation, coordinate with your partner in chat and create one shared
+                    investigation plan for determining whether the orbit is better explained by a circular or an
+                    elliptical model.
                   </p>
-                  <p className="mt-1">
-                    Include: 1) which orbit points each of you will inspect, 2) which distances each person will
-                    measure, 3) what result would support a circular model vs an elliptical model.
-                  </p>
-                  <p className="mt-1 font-medium">
-                    Reactor constraint: only 6 measurements are available in total. Decide together how to allocate
-                    them before Investigation.
+                  <p className="mt-2">Your plan should include:</p>
+                  <div className="mt-1 space-y-1 pl-1">
+                    <p>1. What evidence would support a circular model or an elliptical model.</p>
+                    <p>- Which orbit points each person will inspect.</p>
+                    <p>- Which distances each person plans to measure.</p>
+                  </div>
+                  <p className="mt-2 font-medium">
+                    Resource Constraint: Your team has a shared budget of 6 measurements total. Decide together how
+                    to use them before Investigation begins.
                   </p>
                 </div>
               ) : null}
@@ -307,9 +310,9 @@ export function StagePanel({
               ) : null}
               {room.currentSimulation === "Kepler Third Law" ? (
                 <div className="mt-2 rounded-md border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
-                  <p>NOVA has unlocked multiple orbit tracks around the same star.</p>
-                  <p className="mt-2">
-                    Plan how to compare orbital period and semi-major axis across inner, middle, and outer orbits.
+                  <p>
+                    NOVA has unlocked multiple planetary orbits around the same star. Investigate how orbital size
+                    relates to orbital period across different planets.
                   </p>
                   <p className="mt-2">Before Investigation, align on:</p>
                   <ul className="mt-1 list-disc pl-5">
@@ -586,7 +589,7 @@ export function StagePanel({
                   ) : (
                     <form onSubmit={submitDiscussion} className="mt-2 space-y-2">
                       <label className="block">
-                        <span className="text-slate-700">1) {discussionQuestion1}</span>
+                        <span className="text-slate-700">Q1. {discussionQuestion1}</span>
                         <textarea
                           value={q1}
                           onChange={(e) => setQ1(e.target.value)}
@@ -595,7 +598,7 @@ export function StagePanel({
                         />
                       </label>
                       <label className="block">
-                        <span className="text-slate-700">2) {discussionQuestion2}</span>
+                        <span className="text-slate-700">Q2. {discussionQuestion2}</span>
                         <textarea
                           value={q2}
                           onChange={(e) => setQ2(e.target.value)}
