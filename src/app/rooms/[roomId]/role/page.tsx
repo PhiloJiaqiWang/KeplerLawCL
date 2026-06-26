@@ -55,6 +55,7 @@ export default function RolePage() {
 
     localStorage.setItem(displayNameKey, name);
     localStorage.setItem(`display-name:${params.roomId}:${role}`, name);
+    localStorage.setItem(`participant-role:${params.roomId}`, role);
     router.push(`/rooms/${params.roomId}?role=${role}`);
   };
 

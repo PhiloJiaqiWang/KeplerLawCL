@@ -121,6 +121,10 @@ export function StagePanel({
   const myDiscussion = currentProgress.discussionAnswersByRole[role];
   const otherRole: ParticipantRole = role === "participantA" ? "participantB" : "participantA";
   const otherDiscussion = currentProgress.discussionAnswersByRole[otherRole];
+  const displayNameByRole: Record<ParticipantRole, string> = {
+    participantA: room.participantA?.name ?? "Participant A",
+    participantB: room.participantB?.name ?? "Participant B",
+  };
   const discussionQuestion1 =
     room.currentSimulation === "Kepler Second Law"
       ? "Based on your measurements, how does speed change when the exoplanet is closer to vs farther from the star?"
@@ -405,7 +409,7 @@ export function StagePanel({
                             <td className="border-b border-slate-200 px-2 py-1">
                               {new Date(record.createdAt).toLocaleTimeString()}
                             </td>
-                            <td className="border-b border-slate-200 px-2 py-1">{record.role}</td>
+                            <td className="border-b border-slate-200 px-2 py-1">{displayNameByRole[record.role]}</td>
                             <td className="border-b border-slate-200 px-2 py-1">{record.point}</td>
                             {room.currentSimulation === "Kepler Second Law" ? (
                               <>

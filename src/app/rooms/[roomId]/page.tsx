@@ -1,22 +1,38 @@
-import { redirect } from "next/navigation";
+"use client";
+
+import { useEffect } from "react";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { RoomManager } from "@/components/RoomManager";
 import type { ParticipantRole } from "@/lib/types";
 
-type RoomPageProps = {
-  params: Promise<{ roomId: string }>;
-  searchParams: Promise<{ role?: string }>;
-};
-
-const isParticipantRole = (value: string | undefined): value is ParticipantRole =>
+const isParticipantRole = (value: string | null | undefined): value is ParticipantRole =>
   value === "participantA" || value === "participantB";
 
-export default async function RoomPage({ params, searchParams }: RoomPageProps) {
-  const { roomId } = await params;
-  const query = await searchParams;
+export default function RoomPage() {
+  const params = useParams<{ roomId: string }>();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const roomId = params.roomId;
+  const role = searchParams.get("role");
 
-  if (!isParticipantRole(query.role)) {
-    redirect(`/rooms/${roomId}/role`);
+  useEffect(() => {
+    if (isParticipantRole(role)) {
+      localStorage.setItem(`participant-role:${roomId}`, role);
+      return;
+    }
+
+    const savedRole = localStorage.getItem(`participant-role:${roomId}`);
+    if (isParticipantRole(savedRole)) {
+      router.replace(`/rooms/${roomId}?role=${savedRole}`);
+      return;
+    }
+
+    router.replace(`/rooms/${roomId}/role`);
+  }, [role, roomId, router]);
+
+  if (!isParticipantRole(role)) {
+    return <p className="p-6 text-sm text-slate-600">Restoring room...</p>;
   }
 
-  return <RoomManager roomId={roomId} role={query.role} />;
+  return <RoomManager roomId={roomId} role={role} />;
 }
