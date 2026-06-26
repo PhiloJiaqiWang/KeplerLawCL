@@ -1,12 +1,12 @@
-import { NextResponse } from "next/server";
+import { redirect } from "next/navigation";
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const roomId = (url.searchParams.get("roomId") ?? "").trim();
 
   if (!roomId) {
-    return NextResponse.redirect(new URL("/", request.url));
+    redirect("/");
   }
 
-  return NextResponse.redirect(new URL(`/rooms/${encodeURIComponent(roomId)}/role`, request.url));
+  redirect(`/rooms/${encodeURIComponent(roomId)}/role`);
 }
