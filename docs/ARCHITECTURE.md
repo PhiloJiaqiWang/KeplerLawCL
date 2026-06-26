@@ -175,6 +175,7 @@ Agent orchestration:
 - `Reflective` runs a collaboration monitor after participant messages and during room polling; it can react to inactivity, unbalanced participation, or shared uncertainty.
 - `Adaptive` uses the same monitor, asks for explanation first, then runs a Stage 2 adaptive-facilitation prompt that infers the regulation problem and decides whether intervention is needed.
 - Stuck-monitor rules live in `src/agents/config/stuckRules.json`.
+- The monitor gathers timestamps, chat history, and measurement history in code, then lets the LLM decide which stuck rule is present.
 - Adaptive facilitation policy lives in `src/agents/config/adaptiveRules.json`.
 
 Role protection:

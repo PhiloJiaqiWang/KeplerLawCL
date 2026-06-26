@@ -5,11 +5,12 @@ import type { ParticipantRole, RoomState } from "@/lib/types";
 
 type RoleSelectorProps = {
   room: RoomState;
+  initialName?: string;
   onSelect: (role: ParticipantRole, name: string) => Promise<void>;
 };
 
-export function RoleSelector({ room, onSelect }: RoleSelectorProps) {
-  const [name, setName] = useState("");
+export function RoleSelector({ room, initialName = "", onSelect }: RoleSelectorProps) {
+  const [name, setName] = useState(initialName);
   const [error, setError] = useState("");
   const [pendingRole, setPendingRole] = useState<ParticipantRole | null>(null);
 

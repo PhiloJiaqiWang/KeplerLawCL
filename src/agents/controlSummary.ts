@@ -1,6 +1,11 @@
 import { randomUUID } from "node:crypto";
 import { hasOpenAIKey, requestOpenAIText } from "@/agents/openai";
-import { hasBothParticipants, hasMinimumParticipation, monitorConversation } from "@/agents/stuckMonitor";
+import {
+  getSenderLabel,
+  hasBothParticipants,
+  hasMinimumParticipation,
+  monitorConversation,
+} from "@/agents/stuckMonitor";
 import type { EventLog, RoomState } from "@/lib/types";
 
 type SummaryDeps = {
@@ -19,7 +24,7 @@ const lastHandledDecisionKeyByRoom = new Map<string, string>();
 const buildPromptPayload = (room: RoomState) => {
   const progress = room.progressBySimulation[room.currentSimulation];
   const chatTail = room.chatMessages.slice(-30).map((m) => ({
-    sender: m.senderRole,
+    sender: getSenderLabel(room, m.senderRole),
     content: m.content,
     createdAt: m.createdAt,
   }));
@@ -86,7 +91,7 @@ export const runControlSummaryOnStuckIfNeeded = (
   deps: SummaryDeps,
   trigger: MonitorTrigger = "message",
 ) => {
-  if (room.agentCondition !== "No agent") return;
+  return;
   if (!hasOpenAIKey()) return;
   if (!hasBothParticipants(room)) return;
   if (!hasMinimumParticipation(room)) return;

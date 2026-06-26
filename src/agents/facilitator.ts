@@ -3,6 +3,7 @@ import adaptiveRulesJson from "@/agents/config/adaptiveRules.json";
 import { hasOpenAIKey, requestOpenAIText } from "@/agents/openai";
 import {
   buildConversationWindow,
+  getSenderLabel,
   hasBothParticipants,
   hasMinimumParticipation,
   monitorConversation,
@@ -17,6 +18,8 @@ type FacilitatorDeps = {
 type MonitorTrigger = "message" | "poll";
 
 const MONITOR_COOLDOWN_MS = 2 * 60 * 1000;
+const ADAPTIVE_EXPLANATION_MESSAGE_LIMIT = 4;
+const ADAPTIVE_EXPLANATION_TIMEOUT_MS = 90 * 1000;
 const lastFacilitatorAtByRoom = new Map<string, number>();
 const lastHandledDecisionKeyByRoom = new Map<string, string>();
 const inFlightByRoom = new Set<string>();
@@ -24,14 +27,6 @@ const inFlightByRoom = new Set<string>();
 const buildAdaptivePolicyText = () => JSON.stringify(adaptiveRulesJson, null, 2);
 
 const buildReflectivePrompt = async (room: RoomState, decision: MonitorDecision): Promise<string | null> => {
-  if (decision.ruleId === "inactivity_2min") {
-    return [
-      "NOVA check-in:",
-      "What should each of you do next?",
-      "Share one measurement or idea you can contribute in the next minute.",
-    ].join("\n");
-  }
-
   const systemPrompt = [
     "You are NOVA, a collaboration facilitator.",
     "The students appear to need support.",
@@ -65,7 +60,7 @@ const buildReflectivePrompt = async (room: RoomState, decision: MonitorDecision)
 const buildAdaptiveSupport = async (
   room: RoomState,
   decision: MonitorDecision,
-  recentExplanation: ChatMessage,
+  explanationMessages: ChatMessage[],
 ): Promise<string | null> => {
   const systemPrompt = [
     "You are NOVA, a collaboration facilitator.",
@@ -89,13 +84,15 @@ const buildAdaptiveSupport = async (
     "Recent conversation:",
     JSON.stringify(buildConversationWindow(room), null, 2),
     "",
-    "Student explanation to respond to:",
+    "Student explanations received after NOVA asked for explanation:",
     JSON.stringify(
-      {
-        sender: recentExplanation.senderRole,
-        createdAt: recentExplanation.createdAt,
-        content: recentExplanation.content,
-      },
+      explanationMessages.length > 0
+        ? explanationMessages.map((message) => ({
+            sender: getSenderLabel(room, message.senderRole),
+            createdAt: message.createdAt,
+            content: message.content,
+          }))
+        : [{ sender: "None", createdAt: null, content: "No student explanation was received before the timeout." }],
       null,
       2,
     ),
@@ -120,6 +117,29 @@ const markFacilitatorActivity = (roomId: string) => {
   lastFacilitatorAtByRoom.set(roomId, Date.now());
 };
 
+const getExplanationMessages = (room: RoomState, requestedAt: string) =>
+  room.chatMessages.filter(
+    (message) =>
+      message.senderRole !== "agent" && new Date(message.createdAt).getTime() > new Date(requestedAt).getTime(),
+  );
+
+const shouldTriggerAdaptiveSupport = (
+  room: RoomState,
+  pendingFollowUp: NonNullable<RoomState["pendingAgentFollowUp"]>,
+) => {
+  const explanationMessages = getExplanationMessages(room, pendingFollowUp.requestedAt);
+  const participantReplies = new Set(explanationMessages.map((message) => message.senderRole));
+  const timeoutReached = Date.now() - new Date(pendingFollowUp.requestedAt).getTime() >= pendingFollowUp.explanationTimeoutMs;
+
+  return {
+    explanationMessages,
+    ready:
+      participantReplies.has("participantA") && participantReplies.has("participantB")
+      || explanationMessages.length >= pendingFollowUp.explanationMessageLimit
+      || timeoutReached,
+  };
+};
+
 export const runFacilitatorIfNeeded = (
   room: RoomState,
   deps: FacilitatorDeps,
@@ -135,7 +155,6 @@ export const runFacilitatorIfNeeded = (
   if (trigger === "message" && (!latestMessage || latestMessage.senderRole === "agent")) return;
 
   const pendingFollowUp = room.pendingAgentFollowUp;
-  if (trigger === "poll" && pendingFollowUp) return;
   const lastIntervention = lastFacilitatorAtByRoom.get(room.roomId) ?? 0;
   if (!pendingFollowUp && Date.now() - lastIntervention < MONITOR_COOLDOWN_MS) return;
 
@@ -144,14 +163,16 @@ export const runFacilitatorIfNeeded = (
   void (async () => {
     try {
       if (room.agentCondition === "Adaptive" && pendingFollowUp?.kind === "adaptive_support") {
-        const support = await buildAdaptiveSupport(room, pendingFollowUp.monitorDecision, latestMessage);
+        const { explanationMessages, ready } = shouldTriggerAdaptiveSupport(room, pendingFollowUp);
+        if (!ready) return;
+        const support = await buildAdaptiveSupport(room, pendingFollowUp.monitorDecision, explanationMessages);
         room.pendingAgentFollowUp = null;
         if (!support) return;
         deps.appendChat(room, support);
         deps.appendEvent(room, {
           id: randomUUID(),
           type: "ROOM",
-          message: "NOVA posted adaptive support after student explanation.",
+          message: "NOVA posted adaptive support after collecting student explanations.",
           createdAt: new Date().toISOString(),
         });
         markFacilitatorActivity(room.roomId);
@@ -173,6 +194,8 @@ export const runFacilitatorIfNeeded = (
           kind: "adaptive_support",
           monitorDecision: decision,
           requestedAt: new Date().toISOString(),
+          explanationMessageLimit: ADAPTIVE_EXPLANATION_MESSAGE_LIMIT,
+          explanationTimeoutMs: ADAPTIVE_EXPLANATION_TIMEOUT_MS,
         };
         deps.appendChat(room, prompt);
         deps.appendEvent(room, {

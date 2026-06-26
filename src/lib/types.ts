@@ -84,6 +84,8 @@ export type RoomState = {
     kind: "adaptive_support";
     monitorDecision: MonitorDecision;
     requestedAt: string;
+    explanationMessageLimit: number;
+    explanationTimeoutMs: number;
   } | null;
   chatMessages: ChatMessage[];
   eventLogs: EventLog[];

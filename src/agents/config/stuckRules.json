@@ -2,8 +2,8 @@
   "version": 1,
   "rules": [
     {
-      "id": "inactivity_2min",
-      "label": "Inactivity for 2 minutes",
+      "id": "inactivity_3min",
+      "label": "Inactivity for 3 minutes",
       "definition": "Neither participant has taken a visible action for at least two minutes. Visible activity includes chat messages and measurement actions.",
       "monitorSignals": [
         "No participant chat messages for at least two minutes.",

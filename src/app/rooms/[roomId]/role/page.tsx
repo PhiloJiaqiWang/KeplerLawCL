@@ -9,6 +9,8 @@ export default function RolePage() {
   const params = useParams<{ roomId: string }>();
   const router = useRouter();
   const [room, setRoom] = useState<RoomState | null>(null);
+  const [savedName, setSavedName] = useState("");
+  const displayNameKey = `display-name:${params.roomId}`;
 
   useEffect(() => {
     const load = async () => {
@@ -29,6 +31,13 @@ export default function RolePage() {
     void load();
   }, [params.roomId]);
 
+  useEffect(() => {
+    const init = setTimeout(() => {
+      setSavedName(localStorage.getItem(displayNameKey) ?? "");
+    }, 0);
+    return () => clearTimeout(init);
+  }, [displayNameKey]);
+
   const handleSelect = async (role: ParticipantRole, name: string) => {
     const response = await fetch(`/api/rooms/${params.roomId}/join`, {
       method: "POST",
@@ -44,6 +53,8 @@ export default function RolePage() {
       throw new Error("Unable to join role.");
     }
 
+    localStorage.setItem(displayNameKey, name);
+    localStorage.setItem(`display-name:${params.roomId}:${role}`, name);
     router.push(`/rooms/${params.roomId}?role=${role}`);
   };
 
@@ -53,7 +64,7 @@ export default function RolePage() {
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-slate-100 p-6">
-      <RoleSelector room={room} onSelect={handleSelect} />
+      <RoleSelector room={room} initialName={savedName} onSelect={handleSelect} />
     </main>
   );
 }

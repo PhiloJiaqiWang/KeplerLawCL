@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AgentController } from "@/components/AgentController";
 import { ChatRoom } from "@/components/ChatRoom";
 import { DeveloperPanel } from "@/components/DeveloperPanel";
@@ -40,6 +40,8 @@ export function RoomManager({ roomId, role }: RoomManagerProps) {
   const [knowledgeOpen, setKnowledgeOpen] = useState(false);
   const briefingKey = `briefing-accepted:${roomId}:${role}`;
   const developerModeKey = `developer-mode:${roomId}:${role}`;
+  const displayNameKey = `display-name:${roomId}:${role}`;
+  const autoRejoinInFlight = useRef(false);
 
   const loadRoom = useCallback(async () => {
     const query = developerMode ? "?debug=1" : "";
@@ -92,6 +94,35 @@ export function RoomManager({ roomId, role }: RoomManagerProps) {
     }, 0);
     return () => clearTimeout(init);
   }, [briefingKey, developerModeKey]);
+
+  useEffect(() => {
+    if (!room) return;
+    if (autoRejoinInFlight.current) return;
+
+    const participant = role === "participantA" ? room.participantA : room.participantB;
+    if (participant) return;
+
+    const savedName = localStorage.getItem(displayNameKey)?.trim();
+    if (!savedName) return;
+
+    autoRejoinInFlight.current = true;
+    void (async () => {
+      try {
+        const response = await fetch(`/api/rooms/${roomId}/join`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ role, name: savedName }),
+        });
+        if (response.ok) {
+          await loadRoom();
+        }
+      } catch (error) {
+        console.error("Auto rejoin failed", error);
+      } finally {
+        autoRejoinInFlight.current = false;
+      }
+    })();
+  }, [displayNameKey, loadRoom, role, room, roomId]);
 
   const sendMessage = async (content: string) => {
     const response = await fetch(`/api/rooms/${roomId}/messages`, {
