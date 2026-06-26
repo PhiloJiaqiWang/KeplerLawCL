@@ -15,7 +15,7 @@ type FacilitatorDeps = {
   appendEvent: (room: RoomState, event: EventLog) => void;
 };
 
-type MonitorTrigger = "message" | "poll";
+type MonitorTrigger = "message" | "activity" | "poll";
 
 const MONITOR_COOLDOWN_MS = 2 * 60 * 1000;
 const ADAPTIVE_EXPLANATION_MESSAGE_LIMIT = 4;

@@ -21,6 +21,8 @@ import { prisma } from "@/lib/prisma";
 
 const rooms = new Map<string, RoomState>();
 const initialStage: Stage = "Planning";
+const MONITOR_POLL_INTERVAL_MS = 2 * 60 * 1000;
+const lastPollMonitorAtByRoom = new Map<string, number>();
 export { MAX_MEASUREMENTS_PER_SIMULATION, MAX_MEASUREMENTS_THIRD_LAW, getMaxMeasurementsForSimulation };
 
 const createInitialProgress = (): RoomState["progressBySimulation"] => ({
@@ -125,7 +127,7 @@ const addAgentChat = (room: RoomState, content: string) => {
   void persistChatToPostgres(room.roomId, message);
 };
 
-const runRoomMonitors = (room: RoomState, trigger: "message" | "poll") => {
+const runRoomMonitors = (room: RoomState, trigger: "message" | "activity" | "poll") => {
   runFacilitatorIfNeeded(
     room,
     {
@@ -172,7 +174,11 @@ export const getRoom = (roomId: string): RoomState | null => rooms.get(roomId) ?
 
 export const refreshRoom = (roomId: string): RoomState => {
   const room = createOrGetRoom(roomId);
-  runRoomMonitors(room, "poll");
+  const lastPollMonitorAt = lastPollMonitorAtByRoom.get(roomId) ?? 0;
+  if (Date.now() - lastPollMonitorAt >= MONITOR_POLL_INTERVAL_MS) {
+    lastPollMonitorAtByRoom.set(roomId, Date.now());
+    runRoomMonitors(room, "poll");
+  }
   return room;
 };
 
@@ -253,7 +259,7 @@ export const updateAgentCondition = (roomId: string, condition: AgentCondition):
     message: `Agent condition changed to ${condition}.`,
     createdAt: new Date().toISOString(),
   });
-    return room;
+  return room;
 };
 
 export const updateSimulation = (roomId: string, simulation: SimulationType): RoomState => {
@@ -265,7 +271,8 @@ export const updateSimulation = (roomId: string, simulation: SimulationType): Ro
     message: `Simulation changed to ${simulation}.`,
     createdAt: new Date().toISOString(),
   });
-    return room;
+  runRoomMonitors(room, "activity");
+  return room;
 };
 
 const hasBothParticipantsChatted = (room: RoomState): boolean => {
@@ -316,8 +323,8 @@ export const submitPlan = (
       createdAt: new Date().toISOString(),
     });
   }
-
-    return room;
+  runRoomMonitors(room, "activity");
+  return room;
 };
 
 const pointSides: Record<MeasurementPoint, "left" | "right"> = {
@@ -456,7 +463,8 @@ export const addMeasurement = (
       message: `${role} measured ${tool} on ${orbit}: ${value.toFixed(2)} ${valueUnit}`,
       createdAt: new Date().toISOString(),
     });
-        return room;
+    runRoomMonitors(room, "activity");
+    return room;
   }
 
   const side = pointSides[point];
@@ -498,7 +506,8 @@ export const addMeasurement = (
         message: `${role} measured speed at ${point} (${speedInterval}s): ${speed.toFixed(2)} u/s`,
         createdAt: new Date().toISOString(),
       });
-            return room;
+      runRoomMonitors(room, "activity");
+      return room;
     }
 
     if (!interval || !secondLawTimeIntervals.includes(interval)) {
@@ -523,7 +532,8 @@ export const addMeasurement = (
       message: `${role} measured swept area at ${point} (${interval}s): ${area.toFixed(2)} u^2`,
       createdAt: new Date().toISOString(),
     });
-        return room;
+    runRoomMonitors(room, "activity");
+    return room;
   }
 
   if (!target || !measurementCoordinates[point] || !measurementCoordinates[target] || point === target) {
@@ -554,7 +564,8 @@ export const addMeasurement = (
     message: `${role} measured ${point} -> ${target}: ${distance.toFixed(1)}`,
     createdAt: new Date().toISOString(),
   });
-    return room;
+  runRoomMonitors(room, "activity");
+  return room;
 };
 
 export const advanceToDiscussion = (roomId: string): RoomState => {
@@ -572,7 +583,8 @@ export const advanceToDiscussion = (roomId: string): RoomState => {
     message: `${simulation} advanced to Discussion.`,
     createdAt: new Date().toISOString(),
   });
-    return room;
+  runRoomMonitors(room, "activity");
+  return room;
 };
 
 export const submitDiscussionAnswers = (
@@ -615,5 +627,6 @@ export const submitDiscussionAnswers = (
       createdAt: new Date().toISOString(),
     });
   }
-    return room;
+  runRoomMonitors(room, "activity");
+  return room;
 };

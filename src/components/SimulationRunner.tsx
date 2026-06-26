@@ -33,6 +33,7 @@ const missionLabelBySimulation: Record<SimulationType, string> = {
 type OrbitPoint = {
   id: string;
   label: string;
+  displayLabel?: string;
   x: number;
   y: number;
   side: "left" | "right" | "neutral";
@@ -86,7 +87,7 @@ export function SimulationRunner({
       { id: "r2", label: "R2", x: cx + a, y: cy, side: "right" },
       { id: "r3", label: "R3", x: cx + a * Math.cos(Math.PI / 6), y: cy + b * Math.sin(Math.PI / 6), side: "right" },
       { id: "center", label: "Center", x: cx, y: cy, side: "neutral" },
-      { id: "f1", label: "Focus 1", x: focusLeftX, y: cy, side: "neutral" },
+      { id: "f1", label: "Focus 1", displayLabel: "Star (Focus 1)", x: focusLeftX, y: cy, side: "neutral" },
       { id: "f2", label: "Focus 2", x: focusRightX, y: cy, side: "neutral" },
     ];
 
@@ -111,7 +112,7 @@ export function SimulationRunner({
       { id: "r2", label: "R2", x: cx + a, y: cy, side: "right" },
       { id: "r3", label: "R3", x: cx + a * Math.cos(Math.PI / 6), y: cy + b * Math.sin(Math.PI / 6), side: "right" },
       { id: "center", label: "Center", x: cx, y: cy, side: "neutral" },
-      { id: "f1", label: "Focus 1", x: focusLeftX, y: cy, side: "neutral" },
+      { id: "f1", label: "Focus 1", displayLabel: "Star (Focus 1)", x: focusLeftX, y: cy, side: "neutral" },
       { id: "f2", label: "Focus 2", x: focusRightX, y: cy, side: "neutral" },
     ];
 
@@ -361,7 +362,7 @@ export function SimulationRunner({
                     fill={selected ? "#dc2626" : accessible ? "#0f172a" : "#94a3b8"}
                   />
                   <text x={point.x + 7} y={point.y - 7} fontSize="10" fill={accessible ? "#1e293b" : "#94a3b8"}>
-                    {point.label}
+                    {point.displayLabel ?? point.label}
                   </text>
                 </g>
               );
@@ -475,7 +476,7 @@ export function SimulationRunner({
                     fill={selected ? "#dc2626" : accessible ? "#0f172a" : "#94a3b8"}
                   />
                   <text x={point.x + 7} y={point.y - 7} fontSize="10" fill={accessible ? "#1e293b" : "#94a3b8"}>
-                    {point.label}
+                    {point.displayLabel ?? point.label}
                   </text>
                 </g>
               );
