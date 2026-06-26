@@ -201,43 +201,51 @@ export function RoomManager({ roomId, role }: RoomManagerProps) {
     participantB: room.participantB?.name ?? "Participant B",
     agent: "NOVA",
   };
+  const missionLabelBySimulation: Record<SimulationType, string> = {
+    "Kepler First Law": "Mission 1: Kepler First Law",
+    "Kepler Second Law": "Mission 2: Kepler Second Law",
+    "Kepler Third Law": "Mission 3: Kepler Third Law",
+  };
   const knowledgeBySimulation: Record<SimulationType, { title: string; basics: string[]; tips: string[] }> = {
     "Kepler First Law": {
-      title: "Kepler First Law Essentials",
+      title: "1st Law",
       basics: [
-        "Test two competing hypotheses using measurements.",
-        "Hypothesis A (Circle): distances from orbit points to one shared center are roughly constant.",
-        "Hypothesis B (Ellipse): (distance to Focus 1 + distance to Focus 2) is roughly constant across points.",
+        "Distance measurements can provide evidence about the shape of an orbit.",
+        "Compare distances from multiple orbit points.",
+        "Use evidence from multiple points before identifying a pattern.",
       ],
       tips: [
-        "If focus sums stay similar across points, that supports Hypothesis B.",
-        "If center distances stay similar across points, that supports a circle model.",
-        "Use both participants' measurements to avoid one-sided sampling.",
+        "Collect distance measurements from different orbit points.",
+        "Compare measurements across locations on the orbit.",
+        "Combine observations from both participants before drawing conclusions.",
+        "Use your limited measurements strategically.",
       ],
     },
     "Kepler Second Law": {
-      title: "Kepler Second Law Essentials",
+      title: "2nd Law",
       basics: [
-        "Hold time interval constant when comparing swept areas.",
-        "Compare speed at near-star points vs far-star points.",
-        "Use multiple locations before claiming a trend.",
+        "Use the same time interval when comparing motion at different locations in the orbit.",
+        "Examine how a planet's motion changes at points closer to and farther from the star.",
+        "Collect evidence from multiple locations before identifying a pattern.",
       ],
       tips: [
-        "Use `Swept Area Tool` with one fixed interval (e.g., always 10s) across points.",
-        "Pair each area observation with speed observations from similar regions.",
-        "If equal-time areas are similar while speed changes by position, your evidence is strong.",
+        "Use the `Swept Area Tool` with one fixed time interval (e.g., 10 s) for all measurements.",
+        "Compare observations from different regions of the orbit.",
+        "Consider both swept area and speed when interpreting motion.",
+        "Use evidence from multiple measurements before drawing conclusions.",
       ],
     },
     "Kepler Third Law": {
-      title: "Kepler Third Law Essentials",
+      title: "Third Law",
       basics: [
-        "Collect both period (P) and semi-major axis (a) for multiple orbits.",
-        "Use cross-orbit comparison instead of one-orbit reasoning.",
+        "Orbital Period (P): The time it takes a planet to complete one full orbit around the star.",
+        "Semi-major Axis (a): The average distance between a planet and the star, represented by half of the orbit's longest diameter.",
+        "Compare measurements from multiple orbits before identifying a pattern.",
       ],
       tips: [
-        "For each selected orbit, complete both `Period` and `Axis` measurements.",
-        "Use the plot tool to compare exponent pairs (a, a^2, a^3) vs (P, P^2, P^3).",
-        "The best-supported model is the one with the clearest across-orbit consistency.",
+        "For each selected orbit, collect both Period (P) and Semi-major Axis (a) measurements.",
+        "Use the plot tool to explore relationships between orbit size and orbital period.",
+        "Compare patterns across multiple orbits before drawing conclusions.",
       ],
     },
   };
@@ -256,7 +264,7 @@ export function RoomManager({ roomId, role }: RoomManagerProps) {
 
   return (
     <div className="flex h-screen flex-col bg-slate-100">
-      {!briefingAccepted ? <MissionBriefing onProceed={acceptBriefing} /> : null}
+      {!briefingAccepted ? <MissionBriefing role={role} onProceed={acceptBriefing} /> : null}
       <header className="flex flex-wrap items-center gap-4 border-b border-slate-300 bg-white px-4 py-3 text-sm text-slate-700">
         <span>
           <strong>Room:</strong> {room.roomId}
@@ -268,7 +276,7 @@ export function RoomManager({ roomId, role }: RoomManagerProps) {
           <strong>Stage:</strong> {currentStage}
         </span>
         <span>
-          <strong>Simulation:</strong> {room.currentSimulation}
+          <strong>Simulation:</strong> {missionLabelBySimulation[room.currentSimulation]}
         </span>
         <button
           onClick={() => setKnowledgeOpen(true)}
@@ -337,7 +345,7 @@ export function RoomManager({ roomId, role }: RoomManagerProps) {
                 Close
               </button>
             </div>
-            <p className="mt-1 text-xs text-slate-500">Current module: {room.currentSimulation}</p>
+            <p className="mt-1 text-xs text-slate-500">Current module: {missionLabelBySimulation[room.currentSimulation]}</p>
             <div className="mt-4 grid gap-4 md:grid-cols-2">
               <section className="rounded-md border border-slate-200 bg-slate-50 p-3">
                 <p className="text-sm font-medium text-slate-900">Core Basics</p>

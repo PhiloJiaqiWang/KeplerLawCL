@@ -1,47 +1,44 @@
 "use client";
 
+import type { ParticipantRole } from "@/lib/types";
+
 type MissionBriefingProps = {
+  role: ParticipantRole;
   onProceed: () => void;
 };
 
-export function MissionBriefing({ onProceed }: MissionBriefingProps) {
+const shipByRole: Record<ParticipantRole, { current: string; partner: string }> = {
+  participantA: { current: "ISS Horizon", partner: "ISS Meridian" },
+  participantB: { current: "ISS Meridian", partner: "ISS Horizon" },
+};
+
+export function MissionBriefing({ role, onProceed }: MissionBriefingProps) {
+  const ships = shipByRole[role];
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4">
       <section className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-xl border border-slate-300 bg-white p-6 shadow-xl">
         <h1 className="text-2xl font-semibold text-slate-900">Mission Briefing</h1>
         <div className="mt-4 space-y-3 text-sm leading-6 text-slate-700">
-          <p>You wake to alarms, flickering lights, and a sharp pain in your head.</p>
-          <p>Your spacecraft is damaged.</p>
-          <p>You do not remember your name. You do not remember the mission.</p>
-          <p>Outside the viewport lies an unfamiliar star system.</p>
+          <p>You wake to alarms and emergency lights aboard the <span className="font-semibold text-slate-900">{ships.current}</span>.</p>
+          <p>A fleet-wide blackout has wiped navigation, damaged ship systems, and corrupted mission memory.</p>
+          <p className="font-semibold text-slate-900">FLEET LINK PARTIALLY RESTORED</p>
           <p>
-            Ship diagnostics report severe system failure following a collision. Navigation is offline. Portions of your
-            memory appear to be missing.
+            Two ships are still responding: the <span className="font-semibold text-slate-900">{ships.current}</span>
+            {" "}and the <span className="font-semibold text-slate-900">{ships.partner}</span>.
           </p>
-          <p>A message flashes across your terminal:</p>
-          <p className="font-semibold text-slate-900">SURVIVOR SIGNAL DETECTED</p>
-          <p>Another spacecraft survived the incident.</p>
           <p>
-            Communication systems are damaged. Voice and video are unavailable. Only a text channel remains operational.
+            Voice and video are down. Only the chat link still works.
           </p>
-          <p>A calm voice interrupts the alarms.</p>
           <p className="font-semibold text-slate-900">NOVA ONLINE</p>
-          <p>Virtual Assistant.</p>
-          <p>NOVA explains the problem:</p>
+          <p>NOVA is your ship&apos;s onboard AI.</p>
           <p>
-            The system’s navigation database is corrupted. To calculate a safe escape trajectory, your ships must
-            reconstruct how planets in this star system move around their star.
+            NOVA says the two of you must work together through chat to rebuild the navigation model and restore course.
           </p>
           <p>
-            Your ships possess different scientific instruments and observe different parts of the system. Neither of you
-            has enough information to solve the problem alone.
+            Each ship has different instruments and partial information, so neither of you can solve it alone.
           </p>
-          <p>
-            By investigating the planets’ orbital patterns, speeds, and orbital relationships, you and your partner must
-            recover the missing navigation model and restore course calculation.
-          </p>
-          <p>Scientific measurements consume limited reactor energy.</p>
-          <p>Plan carefully. Collaborate effectively. Good luck!</p>
+          <p>Measurements cost limited reactor energy. Coordinate carefully.</p>
         </div>
         <div className="mt-5 flex justify-end">
           <button

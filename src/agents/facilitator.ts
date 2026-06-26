@@ -14,24 +14,27 @@ type FacilitatorDeps = {
   appendEvent: (room: RoomState, event: EventLog) => void;
 };
 
+type MonitorTrigger = "message" | "poll";
+
 const MONITOR_COOLDOWN_MS = 2 * 60 * 1000;
 const lastFacilitatorAtByRoom = new Map<string, number>();
+const lastHandledDecisionKeyByRoom = new Map<string, string>();
 const inFlightByRoom = new Set<string>();
 
-const adaptiveRules = adaptiveRulesJson.rules;
-
-const chooseAdaptiveRuleText = (ruleId: string | null): string => {
-  const matchingRules = adaptiveRules.filter((rule) => rule.useFor.includes(ruleId ?? ""));
-  const selectedRules = matchingRules.length > 0 ? matchingRules : adaptiveRules;
-  return selectedRules
-    .map((rule) => `${rule.id} | ${rule.label}\nInstruction: ${rule.instruction}`)
-    .join("\n\n");
-};
+const buildAdaptivePolicyText = () => JSON.stringify(adaptiveRulesJson, null, 2);
 
 const buildReflectivePrompt = async (room: RoomState, decision: MonitorDecision): Promise<string | null> => {
+  if (decision.ruleId === "inactivity_2min") {
+    return [
+      "NOVA check-in:",
+      "What should each of you do next?",
+      "Share one measurement or idea you can contribute in the next minute.",
+    ].join("\n");
+  }
+
   const systemPrompt = [
     "You are NOVA, a collaboration facilitator.",
-    "The students appear stuck.",
+    "The students appear to need support.",
     "Write a short intervention that asks both students to explain what they are doing and why they are doing it.",
     "Use 2-3 concise questions.",
     "Do not provide the scientific answer.",
@@ -66,16 +69,22 @@ const buildAdaptiveSupport = async (
 ): Promise<string | null> => {
   const systemPrompt = [
     "You are NOVA, a collaboration facilitator.",
-    "After students explain what they are doing, provide adaptive support.",
-    "Give 2 short bullets: one reflection on their explanation and one next-step suggestion.",
-    "Use the adaptive rules when relevant.",
-    "Do not provide the final scientific answer.",
+    "This is Stage 2: Adaptive Facilitation.",
+    "After receiving the students' explanations, infer the primary regulation problem.",
+    "Decide whether intervention is necessary.",
+    "If the students are already regulating effectively, briefly encourage them to continue.",
+    "If intervention is needed, generate exactly one concise facilitator message.",
+    "The message must encourage self-regulation, discussion, and explanation when useful.",
+    "Encourage planning or reflection when appropriate.",
+    "Never reveal the answer.",
+    "Never solve the task.",
+    "Keep the message under 80 words.",
   ].join(" ");
 
   const userPrompt = [
     `Detected issue: ${decision.ruleId ?? "unknown"} (${decision.rationale})`,
-    "Adaptive rules:",
-    chooseAdaptiveRuleText(decision.ruleId),
+    "Adaptive facilitation policy:",
+    buildAdaptivePolicyText(),
     "",
     "Recent conversation:",
     JSON.stringify(buildConversationWindow(room), null, 2),
@@ -111,17 +120,22 @@ const markFacilitatorActivity = (roomId: string) => {
   lastFacilitatorAtByRoom.set(roomId, Date.now());
 };
 
-export const runFacilitatorIfNeeded = (room: RoomState, deps: FacilitatorDeps) => {
-  if (room.agentCondition === "Situational") return;
+export const runFacilitatorIfNeeded = (
+  room: RoomState,
+  deps: FacilitatorDeps,
+  trigger: MonitorTrigger = "message",
+) => {
+  if (room.agentCondition === "No agent") return;
   if (!hasOpenAIKey()) return;
   if (!hasBothParticipants(room)) return;
   if (!hasMinimumParticipation(room)) return;
   if (inFlightByRoom.has(room.roomId)) return;
 
   const latestMessage = room.chatMessages.at(-1);
-  if (!latestMessage || latestMessage.senderRole === "agent") return;
+  if (trigger === "message" && (!latestMessage || latestMessage.senderRole === "agent")) return;
 
   const pendingFollowUp = room.pendingAgentFollowUp;
+  if (trigger === "poll" && pendingFollowUp) return;
   const lastIntervention = lastFacilitatorAtByRoom.get(room.roomId) ?? 0;
   if (!pendingFollowUp && Date.now() - lastIntervention < MONITOR_COOLDOWN_MS) return;
 
@@ -146,9 +160,13 @@ export const runFacilitatorIfNeeded = (room: RoomState, deps: FacilitatorDeps) =
 
       const decision = await monitorConversation(room);
       if (!decision?.stuck) return;
+      if (decision.detectionKey && lastHandledDecisionKeyByRoom.get(room.roomId) === decision.detectionKey) return;
 
       const prompt = await buildReflectivePrompt(room, decision);
       if (!prompt) return;
+      if (decision.detectionKey) {
+        lastHandledDecisionKeyByRoom.set(room.roomId, decision.detectionKey);
+      }
 
       if (room.agentCondition === "Adaptive") {
         room.pendingAgentFollowUp = {
@@ -160,7 +178,7 @@ export const runFacilitatorIfNeeded = (room: RoomState, deps: FacilitatorDeps) =
         deps.appendEvent(room, {
           id: randomUUID(),
           type: "ROOM",
-          message: `NOVA detected stuck collaboration (${decision.ruleId ?? "unknown"}) and requested explanation.`,
+          message: `NOVA detected a collaboration issue (${decision.ruleId ?? "unknown"}) and requested explanation.`,
           createdAt: new Date().toISOString(),
         });
         markFacilitatorActivity(room.roomId);
@@ -171,7 +189,7 @@ export const runFacilitatorIfNeeded = (room: RoomState, deps: FacilitatorDeps) =
       deps.appendEvent(room, {
         id: randomUUID(),
         type: "ROOM",
-        message: `NOVA detected stuck collaboration (${decision.ruleId ?? "unknown"}) and posted a reflective prompt.`,
+        message: `NOVA detected a collaboration issue (${decision.ruleId ?? "unknown"}) and posted a reflective prompt.`,
         createdAt: new Date().toISOString(),
       });
       markFacilitatorActivity(room.roomId);

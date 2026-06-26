@@ -171,11 +171,11 @@ Exported operations:
 - `updateAgentCondition(roomId, condition)`
 
 Agent orchestration:
-- `Situational` posts a timed summary every three minutes while collaboration is active.
-- `Reflective` runs a monitor over recent chat after participant messages and, if stuck, asks students to explain what they are doing and why.
-- `Adaptive` uses the same stuck monitor, asks for explanation first, then posts adaptive support after the next participant response.
+- `No agent` posts a timed summary every three minutes while collaboration is active.
+- `Reflective` runs a collaboration monitor after participant messages and during room polling; it can react to inactivity, unbalanced participation, or shared uncertainty.
+- `Adaptive` uses the same monitor, asks for explanation first, then runs a Stage 2 adaptive-facilitation prompt that infers the regulation problem and decides whether intervention is needed.
 - Stuck-monitor rules live in `src/agents/config/stuckRules.json`.
-- Adaptive support rules live in `src/agents/config/adaptiveRules.json`.
+- Adaptive facilitation policy lives in `src/agents/config/adaptiveRules.json`.
 
 Role protection:
 - `joinRole` throws `ROLE_TAKEN` when slot is occupied.

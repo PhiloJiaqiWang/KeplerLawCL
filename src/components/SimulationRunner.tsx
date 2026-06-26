@@ -24,6 +24,11 @@ type SimulationRunnerProps = {
 };
 
 const simulations: SimulationType[] = ["Kepler First Law", "Kepler Second Law", "Kepler Third Law"];
+const missionLabelBySimulation: Record<SimulationType, string> = {
+  "Kepler First Law": "Mission 1: Kepler First Law",
+  "Kepler Second Law": "Mission 2: Kepler Second Law",
+  "Kepler Third Law": "Mission 3: Kepler Third Law",
+};
 
 type OrbitPoint = {
   id: string;
@@ -267,11 +272,8 @@ export function SimulationRunner({
     <section className="h-full overflow-y-auto rounded-lg border border-slate-300 bg-slate-100 p-4">
       <h2 className="text-lg font-semibold text-slate-900">Simulation</h2>
       <p className="mt-2 text-sm text-slate-600">
-        Observe the orbit and collect evidence to determine the best orbital model.
+        Mission Objective: Observe the orbit and collect evidence to determine the best orbital model.
       </p>
-      {currentStage ? (
-        <p className="mt-1 text-xs text-slate-500">Stage mode: {currentStage}</p>
-      ) : null}
       <div className="mt-3 flex flex-wrap gap-2">
         {simulations.map((item) => (
           <button
@@ -286,7 +288,7 @@ export function SimulationRunner({
                 : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
             }`}
           >
-            {item}
+            {missionLabelBySimulation[item]}
           </button>
         ))}
       </div>
@@ -311,9 +313,7 @@ export function SimulationRunner({
               <span className="text-xs text-slate-600">
                 Ready: {selectedMeasurement.point} ↔ {selectedMeasurement.target}
               </span>
-            ) : (
-              <span className="text-xs text-slate-600">Select 2 points to create a measurement link.</span>
-            )}
+            ) : null}
             <span className="text-xs font-medium text-slate-700">Energy: {measurementRemaining}/{maxMeasurements}</span>
           </div>
           <svg viewBox="0 0 440 260" className="h-[240px] w-full">
@@ -368,7 +368,11 @@ export function SimulationRunner({
             })}
           </svg>
           {currentStage !== "Investigation" ? (
-            <p className="mt-1 text-xs text-amber-700">Measurements unlock when stage reaches Investigation.</p>
+            <p className="mt-1 text-xs text-amber-700">
+              Measurements unlock when stage reaches Investigation. Select 2 points to create a measurement link.
+              Participant A can inspect left-side points (L1-L3), Participant B can inspect right-side points (R1-R3).
+              Center and two foci are visible to both.
+            </p>
           ) : null}
           {currentStage === "Investigation" && measurementRemaining <= 0 ? (
             <p className="mt-1 text-xs text-amber-700">

@@ -2,54 +2,45 @@
   "version": 1,
   "rules": [
     {
-      "id": "claim_without_reason",
-      "label": "Claim without reason",
-      "definition": "A participant makes a claim, conclusion, or proposed action without giving evidence, reasoning, or reference to the simulation.",
+      "id": "inactivity_2min",
+      "label": "Inactivity for 2 minutes",
+      "definition": "Neither participant has taken a visible action for at least two minutes. Visible activity includes chat messages and measurement actions.",
       "monitorSignals": [
-        "A conclusion is stated without because, evidence, measurement, or comparison.",
-        "A participant pushes a next step without explaining why.",
-        "The partner accepts or responds without asking for reasoning."
+        "No participant chat messages for at least two minutes.",
+        "No new measurements for at least two minutes.",
+        "Measurement activity counts as active collaboration even if the chat is quiet."
       ]
     },
     {
-      "id": "observation_without_interpretation",
-      "label": "Observation without interpretation",
-      "definition": "Participants describe what they see or measure but do not explain what it means for the task or hypothesis.",
+      "id": "unbalanced_participation",
+      "label": "Unbalanced participation",
+      "definition": "One participant is carrying most of the visible contribution while the other contributes little or mostly minimal acknowledgements.",
       "monitorSignals": [
-        "Messages report observations, numbers, or patterns only.",
-        "No one connects the observation to an explanation or decision.",
-        "The conversation stays descriptive instead of interpretive."
+        "One participant contributes substantially more turns than the other.",
+        "The quieter participant mostly sends short acknowledgements or almost nothing.",
+        "The exchange does not show shared contribution."
       ]
     },
     {
-      "id": "quick_agreement",
-      "label": "Quick agreement",
-      "definition": "Participants agree too quickly without evaluating alternatives, checking evidence, or clarifying understanding.",
+      "id": "shared_uncertainty",
+      "label": "Shared uncertainty",
+      "definition": "Both participants express uncertainty about the same question, interpretation, or next step, and the conversation does not resolve it.",
       "monitorSignals": [
-        "A suggestion is followed by brief agreement such as yes, ok, sure, or let's do that.",
-        "There is no challenge, elaboration, or reasoning after agreement.",
-        "The group moves on before explaining why the choice makes sense."
-      ]
-    },
-    {
-      "id": "unequal_participation",
-      "label": "Unequal participation",
-      "definition": "One participant is carrying most of the conversation while the other contributes little or only minimal acknowledgements.",
-      "monitorSignals": [
-        "One participant contributes substantially more turns or detail than the other.",
-        "The quieter participant mostly sends short acknowledgements.",
-        "The conversation does not show shared reasoning."
+        "Both participants signal confusion, uncertainty, or not knowing.",
+        "Their uncertainty is about the same concept, decision, or interpretation.",
+        "The exchange remains unresolved instead of converging on a next step."
       ]
     }
   ],
   "decisionGuidance": {
     "shouldFlagIf": [
-      "At least one rule is clearly present in the recent exchange.",
-      "The pattern is likely to slow, narrow, or weaken collaboration."
+      "At least one rule is clearly present in the recent collaboration activity.",
+      "The pattern is likely to block progress or weaken collaboration."
     ],
     "shouldNotFlagIf": [
-      "The partners are already repairing the issue on their own.",
-      "The exchange is brief but still shows reasoning, interpretation, or balanced participation."
+      "The partners are already recovering on their own.",
+      "The collaboration is active because they are still sending messages or taking measurements.",
+      "Only one participant is uncertain, or both are uncertain about different things."
     ]
   }
 }

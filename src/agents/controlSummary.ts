@@ -8,10 +8,13 @@ type SummaryDeps = {
   appendEvent: (room: RoomState, event: EventLog) => void;
 };
 
+type MonitorTrigger = "message" | "poll";
+
 const STUCK_SUMMARY_COOLDOWN_MS = 2 * 60 * 1000;
 const lastSummaryAtByRoom = new Map<string, number>();
 const inFlightByRoom = new Set<string>();
 const lastStuckSummaryAtByRoom = new Map<string, number>();
+const lastHandledDecisionKeyByRoom = new Map<string, string>();
 
 const buildPromptPayload = (room: RoomState) => {
   const progress = room.progressBySimulation[room.currentSimulation];
@@ -78,15 +81,19 @@ const postSummary = async (
   });
 };
 
-export const runControlSummaryOnStuckIfNeeded = (room: RoomState, deps: SummaryDeps) => {
-  if (room.agentCondition !== "Situational") return;
+export const runControlSummaryOnStuckIfNeeded = (
+  room: RoomState,
+  deps: SummaryDeps,
+  trigger: MonitorTrigger = "message",
+) => {
+  if (room.agentCondition !== "No agent") return;
   if (!hasOpenAIKey()) return;
   if (!hasBothParticipants(room)) return;
   if (!hasMinimumParticipation(room)) return;
   if (inFlightByRoom.has(room.roomId)) return;
 
   const latestMessage = room.chatMessages.at(-1);
-  if (!latestMessage || latestMessage.senderRole === "agent") return;
+  if (trigger === "message" && (!latestMessage || latestMessage.senderRole === "agent")) return;
 
   const lastStuckSummaryAt = lastStuckSummaryAtByRoom.get(room.roomId) ?? 0;
   if (Date.now() - lastStuckSummaryAt < STUCK_SUMMARY_COOLDOWN_MS) return;
@@ -97,15 +104,19 @@ export const runControlSummaryOnStuckIfNeeded = (room: RoomState, deps: SummaryD
     try {
       const decision = await monitorConversation(room);
       if (!decision?.stuck) return;
+      if (decision.detectionKey && lastHandledDecisionKeyByRoom.get(room.roomId) === decision.detectionKey) return;
 
       lastStuckSummaryAtByRoom.set(room.roomId, Date.now());
       lastSummaryAtByRoom.set(room.roomId, Date.now());
-      await postSummary(room, deps, `NOVA posted situational summary after stuck detection (${decision.ruleId ?? "unknown"}).`);
+      if (decision.detectionKey) {
+        lastHandledDecisionKeyByRoom.set(room.roomId, decision.detectionKey);
+      }
+      await postSummary(room, deps, `NOVA posted situational summary after collaboration issue detection (${decision.ruleId ?? "unknown"}).`);
     } catch (error) {
       deps.appendEvent(room, {
         id: randomUUID(),
         type: "SYSTEM",
-        message: `NOVA stuck-triggered summary failed: ${error instanceof Error ? error.message : String(error)}`,
+        message: `NOVA issue-triggered summary failed: ${error instanceof Error ? error.message : String(error)}`,
         createdAt: new Date().toISOString(),
       });
     } finally {

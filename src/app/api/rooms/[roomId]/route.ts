@@ -3,12 +3,12 @@ import { NextResponse } from "next/server";
 export const runtime = "nodejs";
 import { getVisibleOpenAIDebugTraces } from "@/agents/debug";
 import { getOpenAIStatus } from "@/agents/status";
-import { createOrGetRoom } from "@/lib/roomStore";
+import { refreshRoom } from "@/lib/roomStore";
 
 export async function GET(req: Request, context: { params: Promise<{ roomId: string }> }) {
   try {
     const { roomId } = await context.params;
-    const room = createOrGetRoom(roomId);
+    const room = refreshRoom(roomId);
     const openAIStatus = await getOpenAIStatus();
     const url = new URL(req.url);
     const developerMode = url.searchParams.get("debug") === "1";

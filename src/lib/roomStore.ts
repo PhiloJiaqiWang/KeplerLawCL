@@ -125,6 +125,25 @@ const addAgentChat = (room: RoomState, content: string) => {
   void persistChatToPostgres(room.roomId, message);
 };
 
+const runRoomMonitors = (room: RoomState, trigger: "message" | "poll") => {
+  runFacilitatorIfNeeded(
+    room,
+    {
+      appendChat: addAgentChat,
+      appendEvent: addEvent,
+    },
+    trigger,
+  );
+  runControlSummaryOnStuckIfNeeded(
+    room,
+    {
+      appendChat: addAgentChat,
+      appendEvent: addEvent,
+    },
+    trigger,
+  );
+};
+
 export const createOrGetRoom = (roomId: string): RoomState => {
   const existing = rooms.get(roomId);
   if (existing) {
@@ -138,7 +157,7 @@ export const createOrGetRoom = (roomId: string): RoomState => {
     currentActivity: "Orientation",
     currentSimulation: "Kepler First Law",
     progressBySimulation: createInitialProgress(),
-    agentCondition: "Situational",
+    agentCondition: "No agent",
     pendingAgentFollowUp: null,
     chatMessages: [],
     eventLogs: [],
@@ -150,6 +169,12 @@ export const createOrGetRoom = (roomId: string): RoomState => {
 };
 
 export const getRoom = (roomId: string): RoomState | null => rooms.get(roomId) ?? null;
+
+export const refreshRoom = (roomId: string): RoomState => {
+  const room = createOrGetRoom(roomId);
+  runRoomMonitors(room, "poll");
+  return room;
+};
 
 const slotKeyByRole: Record<ParticipantRole, "participantA" | "participantB"> = {
   participantA: "participantA",
@@ -213,14 +238,7 @@ export const postMessage = (roomId: string, role: ParticipantRole, content: stri
     createdAt: message.createdAt,
   });
 
-  runFacilitatorIfNeeded(room, {
-    appendChat: addAgentChat,
-    appendEvent: addEvent,
-  });
-  runControlSummaryOnStuckIfNeeded(room, {
-    appendChat: addAgentChat,
-    appendEvent: addEvent,
-  });
+  runRoomMonitors(room, "message");
 
     return room;
 };

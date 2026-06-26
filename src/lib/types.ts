@@ -9,13 +9,14 @@ export type ParticipantSlot = {
 
 export type Activity = "Orientation" | "Simulation" | "Debrief";
 export type Stage = "Planning" | "Investigation" | "Discussion" | "Submission";
-export type AgentCondition = "Situational" | "Reflective" | "Adaptive";
+export type AgentCondition = "No agent" | "Reflective" | "Adaptive";
 export type SimulationType = "Kepler First Law" | "Kepler Second Law" | "Kepler Third Law";
 export type MonitorDecision = {
   stuck: boolean;
   ruleId: string | null;
   confidence: "low" | "medium" | "high";
   rationale: string;
+  detectionKey?: string;
 };
 
 export type ChatMessage = {

@@ -1,23 +1,38 @@
 {
-  "version": 1,
-  "rules": [
-    {
-      "id": "ground_in_evidence",
-      "label": "Ground ideas in evidence",
-      "useFor": [
-        "claim_without_reason",
-        "observation_without_interpretation"
-      ],
-      "instruction": "Prompt the students to anchor their claim or observation in a specific measurement, comparison, or simulation pattern before deciding what to do next."
-    },
-    {
-      "id": "rebalance_participation",
-      "label": "Rebalance participation",
-      "useFor": [
-        "quick_agreement",
-        "unequal_participation"
-      ],
-      "instruction": "Prompt the quieter participant to add or critique the next step, and ask the more active participant to respond to that contribution instead of moving ahead alone."
-    }
+  "version": 2,
+  "stage": "Adaptive Facilitation",
+  "steps": [
+    "Infer the primary regulation problem from the students' explanations.",
+    "Decide whether intervention is necessary.",
+    "If intervention is needed, generate one concise facilitator message."
+  ],
+  "regulationProblems": [
+    "Planning",
+    "Monitoring progress",
+    "Shared understanding",
+    "Strategy adaptation",
+    "Participation imbalance",
+    "Reflection",
+    "No intervention needed"
+  ],
+  "decisionPolicy": {
+    "interveneWhen": [
+      "The students are not yet regulating effectively on their own.",
+      "A brief prompt could help them clarify, coordinate, plan, monitor, or reflect."
+    ],
+    "doNotInterveneWhen": [
+      "The students are already regulating effectively.",
+      "Their explanation already shows clear planning, monitoring, shared understanding, adaptation, balanced participation, or reflection."
+    ],
+    "continueMessage": "If no intervention is needed, briefly encourage the students to continue."
+  },
+  "messageRequirements": [
+    "Encourage students to regulate themselves.",
+    "Encourage discussion.",
+    "Encourage explanation.",
+    "Encourage planning or reflection when appropriate.",
+    "Never reveal the answer.",
+    "Never solve the task.",
+    "Keep the message under 80 words."
   ]
 }
