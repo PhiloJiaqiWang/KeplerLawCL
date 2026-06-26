@@ -44,25 +44,44 @@ export function RoomManager({ roomId, role }: RoomManagerProps) {
   const autoRejoinInFlight = useRef(false);
 
   const loadRoom = useCallback(async () => {
-    const query = developerMode ? "?debug=1" : "";
-    const response = await fetch(`/api/rooms/${roomId}${query}`, { cache: "no-store" });
+    const response = await fetch(`/api/rooms/${roomId}`, { cache: "no-store" });
     if (!response.ok) {
       throw new Error(`Unable to load room (${response.status}).`);
     }
     const payload = (await response.json()) as {
       room?: RoomState;
-      openAIStatus?: OpenAIStatus;
-      openAIDebug?: { traces?: OpenAIDebugTrace[] };
       error?: string;
     };
     if (!payload.room) {
       throw new Error(payload.error ?? "Room payload is missing.");
     }
     setRoom(payload.room);
+  }, [roomId]);
+
+  const loadDeveloperDiagnostics = useCallback(async () => {
+    if (!developerMode) {
+      setOpenAIStatus({
+        state: "unavailable",
+        detail: "Developer mode is off.",
+      });
+      setOpenAIDebugTraces([]);
+      return;
+    }
+
+    const response = await fetch(`/api/rooms/${roomId}/developer`, { cache: "no-store" });
+    if (!response.ok) {
+      throw new Error(`Unable to load developer diagnostics (${response.status}).`);
+    }
+    const payload = (await response.json()) as {
+      openAIStatus?: OpenAIStatus;
+      openAIDebug?: { traces?: OpenAIDebugTrace[] };
+      error?: string;
+    };
+
     setOpenAIStatus(
       payload.openAIStatus ?? {
         state: "unavailable",
-        detail: "OpenAI status did not load.",
+        detail: payload.error ?? "OpenAI status did not load.",
       },
     );
     setOpenAIDebugTraces(payload.openAIDebug?.traces ?? []);
@@ -84,6 +103,23 @@ export function RoomManager({ roomId, role }: RoomManagerProps) {
       clearInterval(interval);
     };
   }, [loadRoom]);
+
+  useEffect(() => {
+    const initialLoad = setTimeout(() => {
+      void loadDeveloperDiagnostics().catch((error) => {
+        console.error("Initial developer diagnostics load failed", error);
+      });
+    }, 0);
+    const interval = setInterval(() => {
+      void loadDeveloperDiagnostics().catch((error) => {
+        console.error("Developer diagnostics polling failed", error);
+      });
+    }, 2000);
+    return () => {
+      clearTimeout(initialLoad);
+      clearInterval(interval);
+    };
+  }, [loadDeveloperDiagnostics]);
 
   useEffect(() => {
     const init = setTimeout(() => {
