@@ -266,7 +266,7 @@ export function RoomManager({ roomId, role }: RoomManagerProps) {
   const displayNameByRole: Record<SenderRole, string> = {
     participantA: room.participantA?.name ?? "Participant A",
     participantB: room.participantB?.name ?? "Participant B",
-    agent: "NOVA",
+    agent: room.agentCondition === "Type3" ? "Lyra" : "NOVA",
   };
   const missionLabelBySimulation: Record<SimulationType, string> = {
     "Kepler First Law": "Mission 1: Kepler First Law",

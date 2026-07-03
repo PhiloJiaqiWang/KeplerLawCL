@@ -5,7 +5,7 @@ type SummaryDeps = {
   appendEvent: (room: RoomState, event: EventLog) => void;
 };
 
-type MonitorTrigger = "message" | "activity" | "poll";
+type MonitorTrigger = "message" | "activity";
 
 export const runControlSummaryOnStuckIfNeeded = (
   _room: RoomState,

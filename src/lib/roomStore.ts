@@ -21,8 +21,8 @@ import { prisma } from "@/lib/prisma";
 
 const rooms = new Map<string, RoomState>();
 const initialStage: Stage = "Planning";
-const MONITOR_POLL_INTERVAL_MS = 2 * 60 * 1000;
-const lastPollMonitorAtByRoom = new Map<string, number>();
+const TYPE3_INTRO_MESSAGE =
+  "Hi, I’m Lyra—another survivor. I think I accidentally connected to this channel after the blackout. I’ll try to figure things out with you.";
 export { MAX_MEASUREMENTS_PER_SIMULATION, MAX_MEASUREMENTS_THIRD_LAW, getMaxMeasurementsForSimulation };
 
 const createInitialProgress = (): RoomState["progressBySimulation"] => ({
@@ -127,7 +127,10 @@ const addAgentChat = (room: RoomState, content: string) => {
   void persistChatToPostgres(room.roomId, message);
 };
 
-const runRoomMonitors = (room: RoomState, trigger: "message" | "activity" | "poll") => {
+const hasType3Introduction = (room: RoomState) =>
+  room.chatMessages.some((message) => message.senderRole === "agent" && message.content === TYPE3_INTRO_MESSAGE);
+
+const runRoomMonitors = (room: RoomState, trigger: "message" | "activity") => {
   runFacilitatorIfNeeded(
     room,
     {
@@ -172,15 +175,7 @@ export const createOrGetRoom = (roomId: string): RoomState => {
 
 export const getRoom = (roomId: string): RoomState | null => rooms.get(roomId) ?? null;
 
-export const refreshRoom = (roomId: string): RoomState => {
-  const room = createOrGetRoom(roomId);
-  const lastPollMonitorAt = lastPollMonitorAtByRoom.get(roomId) ?? 0;
-  if (Date.now() - lastPollMonitorAt >= MONITOR_POLL_INTERVAL_MS) {
-    lastPollMonitorAtByRoom.set(roomId, Date.now());
-    runRoomMonitors(room, "poll");
-  }
-  return room;
-};
+export const refreshRoom = (roomId: string): RoomState => createOrGetRoom(roomId);
 
 const slotKeyByRole: Record<ParticipantRole, "participantA" | "participantB"> = {
   participantA: "participantA",
@@ -246,7 +241,7 @@ export const postMessage = (roomId: string, role: ParticipantRole, content: stri
 
   runRoomMonitors(room, "message");
 
-    return room;
+  return room;
 };
 
 export const updateAgentCondition = (roomId: string, condition: AgentCondition): RoomState => {
@@ -259,6 +254,15 @@ export const updateAgentCondition = (roomId: string, condition: AgentCondition):
     message: `Agent condition changed to ${condition}.`,
     createdAt: new Date().toISOString(),
   });
+  if (condition === "Type3" && !hasType3Introduction(room)) {
+    addAgentChat(room, TYPE3_INTRO_MESSAGE);
+    addEvent(room, {
+      id: randomUUID(),
+      type: "ROOM",
+      message: "Lyra introduced herself after Type3 was enabled.",
+      createdAt: new Date().toISOString(),
+    });
+  }
   return room;
 };
 

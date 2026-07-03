@@ -4,7 +4,7 @@ export const runtime = "nodejs";
 import { updateAgentCondition } from "@/lib/roomStore";
 import type { AgentCondition } from "@/lib/types";
 
-const validConditions: AgentCondition[] = ["No agent", "Reflective", "Adaptive"];
+const validConditions: AgentCondition[] = ["No agent", "Reflective", "Adaptive", "Type3"];
 
 export async function POST(req: Request, context: { params: Promise<{ roomId: string }> }) {
   const { roomId } = await context.params;

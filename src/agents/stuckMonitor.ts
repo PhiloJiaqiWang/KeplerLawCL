@@ -3,6 +3,7 @@ import { requestOpenAIJson } from "@/agents/openai";
 import type { MonitorDecision, ParticipantRole, RoomState } from "@/lib/types";
 
 const stuckRules = stuckRulesJson.rules;
+const ruleCategoryById = new Map(stuckRules.map((rule) => [rule.id, rule.category]));
 const MONITOR_MESSAGE_WINDOW = 12;
 const MONITOR_MEASUREMENT_WINDOW = 8;
 
@@ -15,7 +16,7 @@ export const getParticipantLabel = (room: RoomState, role: ParticipantRole) =>
     : (room.participantB?.name?.trim() || "Participant B");
 
 export const getSenderLabel = (room: RoomState, role: string) =>
-  isParticipantRole(role) ? getParticipantLabel(room, role) : "NOVA";
+  isParticipantRole(role) ? getParticipantLabel(room, role) : room.agentCondition === "Type3" ? "Lyra" : "NOVA";
 
 const getParticipantMessages = (room: RoomState) =>
   room.chatMessages.filter((message) => isParticipantRole(message.senderRole));
@@ -29,7 +30,7 @@ const formatRules = () =>
   stuckRules
     .map((rule) => {
       const signals = rule.monitorSignals.map((signal) => `- ${signal}`).join("\n");
-      return `${rule.id} | ${rule.label}\nDefinition: ${rule.definition}\nSignals:\n${signals}`;
+      return `${rule.id} | ${rule.label}\nCategory: ${rule.category}\nDefinition: ${rule.definition}\nSignals:\n${signals}`;
     })
     .join("\n\n");
 
@@ -117,9 +118,11 @@ export const monitorConversation = async (room: RoomState): Promise<MonitorDecis
     "Use only the supplied evidence window, including timestamps, recent chat, recent measurements, and participation counts.",
     "Treat measurement activity as active collaboration.",
     "For inactivity, compare the current timestamp against the latest participant activity timestamp.",
+    "Distinguish conceptual trouble, strategic trouble, and collaborative trouble based on the supplied rule categories.",
     "Be conservative: only mark stuck when a supplied rule is clearly present.",
-    "Return JSON only with keys stuck, ruleId, confidence, rationale.",
+    "Return JSON only with keys stuck, ruleId, category, confidence, rationale.",
     "ruleId must be one of the supplied rule ids or null.",
+    "category must be one of the supplied rule categories or null.",
   ].join(" ");
 
   const userPrompt = [
@@ -153,6 +156,7 @@ export const monitorConversation = async (room: RoomState): Promise<MonitorDecis
 
   return {
     ...decision,
+    category: decision.category ?? (decision.ruleId ? ruleCategoryById.get(decision.ruleId) ?? null : null),
     detectionKey: buildDetectionKey(room, decision.ruleId),
   };
 };
