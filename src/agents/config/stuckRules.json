@@ -4,10 +4,10 @@
     {
       "id": "inactivity_3min",
       "label": "Inactivity for 3 minutes",
-      "definition": "Neither participant has taken a visible action for at least two minutes. Visible activity includes chat messages and measurement actions.",
+      "definition": "Neither participant has taken a visible action for at least three minutes. Visible activity includes chat messages and measurement actions.",
       "monitorSignals": [
-        "No participant chat messages for at least two minutes.",
-        "No new measurements for at least two minutes.",
+        "No participant chat messages for at least three minutes.",
+        "No new measurements for at least three minutes.",
         "Measurement activity counts as active collaboration even if the chat is quiet."
       ]
     },

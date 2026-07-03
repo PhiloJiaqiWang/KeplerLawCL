@@ -304,7 +304,7 @@ export function StagePanel({
                   <p className="mt-2">Before entering Investigation, align on a joint plan:</p>
                   <ul className="mt-1 list-disc pl-5">
                     <li>which speed and swept area measurements each person will collect</li>
-                    <li>what patterns or evidence would suggest that the orbit follows a consistent physical principle</li>
+                    <li>What kind of evidence would suggest that the planet&apos;s changing speed still follows a consistent physical rule?</li>
                   </ul>
                   <p className="mt-2 font-medium">
                     Reactor constraint: only 6 total measurements are available. Coordinate carefully to decide how to

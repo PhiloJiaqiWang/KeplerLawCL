@@ -6,7 +6,7 @@ export default function Home() {
         method="get"
         className="w-full max-w-md rounded-xl border border-slate-200 bg-white p-6 shadow-sm"
       >
-        <h1 className="text-2xl font-semibold text-slate-900">Collaborative Learning Study</h1>
+        <h1 className="text-2xl font-semibold text-slate-900">Un-orbit</h1>
         <p className="mt-2 text-sm text-slate-600">Enter a Room ID to continue.</p>
         <input
           name="roomId"

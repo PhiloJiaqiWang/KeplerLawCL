@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Collaborative Learning Study",
+  title: "Un-orbit",
   description: "Room-based collaborative study prototype",
 };
 
