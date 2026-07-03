@@ -17,6 +17,7 @@ type FacilitatorDeps = {
 };
 
 type MonitorTrigger = "message" | "activity";
+type MonitorCategory = NonNullable<MonitorDecision["category"]>;
 
 const MONITOR_COOLDOWN_MS = 2 * 60 * 1000;
 const ADAPTIVE_EXPLANATION_MESSAGE_LIMIT = 4;
@@ -25,7 +26,9 @@ const TYPE3_EXPLANATION_MESSAGE_LIMIT = 5;
 const lastFacilitatorAtByRoom = new Map<string, number>();
 const lastHandledDecisionKeyByRoom = new Map<string, string>();
 const inFlightByRoom = new Set<string>();
-const ruleCategoryById = new Map(stuckRulesJson.rules.map((rule) => [rule.id, rule.category]));
+const ruleCategoryById = new Map<string, MonitorCategory>(
+  stuckRulesJson.rules.map((rule) => [rule.id, rule.category as MonitorCategory]),
+);
 
 const type3HintLibrary = {
   "Kepler First Law": {
@@ -271,7 +274,7 @@ const getExplanationMessages = (room: RoomState, requestedAt: string) =>
 
 const shouldTriggerAdaptiveSupport = (
   room: RoomState,
-  pendingFollowUp: NonNullable<RoomState["pendingAgentFollowUp"]>,
+  pendingFollowUp: Extract<NonNullable<RoomState["pendingAgentFollowUp"]>, { kind: "adaptive_support" }>,
 ) => {
   const explanationMessages = getExplanationMessages(room, pendingFollowUp.requestedAt);
   const participantReplies = new Set(explanationMessages.map((message) => message.senderRole));
@@ -410,7 +413,7 @@ export const runFacilitatorIfNeeded = (
       deps.appendEvent(room, {
         id: randomUUID(),
         type: "ROOM",
-        message: `NOVA detected a collaboration issue (${decision.ruleId ?? "unknown"}) and posted a ${room.agentCondition === "Type3" ? "novice-peer prompt" : "reflective prompt"}.`,
+        message: `NOVA detected a collaboration issue (${decision.ruleId ?? "unknown"}) and posted a reflective prompt.`,
         createdAt: new Date().toISOString(),
       });
       markFacilitatorActivity(room.roomId);

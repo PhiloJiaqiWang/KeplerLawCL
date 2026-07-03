@@ -2,8 +2,12 @@ import stuckRulesJson from "@/agents/config/stuckRules.json";
 import { requestOpenAIJson } from "@/agents/openai";
 import type { MonitorDecision, ParticipantRole, RoomState } from "@/lib/types";
 
+type MonitorCategory = NonNullable<MonitorDecision["category"]>;
+
 const stuckRules = stuckRulesJson.rules;
-const ruleCategoryById = new Map(stuckRules.map((rule) => [rule.id, rule.category]));
+const ruleCategoryById = new Map<string, MonitorCategory>(
+  stuckRules.map((rule) => [rule.id, rule.category as MonitorCategory]),
+);
 const MONITOR_MESSAGE_WINDOW = 12;
 const MONITOR_MEASUREMENT_WINDOW = 8;
 
