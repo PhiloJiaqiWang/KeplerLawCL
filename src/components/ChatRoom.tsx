@@ -14,12 +14,16 @@ export function ChatRoom({ role, messages, displayNameByRole, onSend }: ChatRoom
   const [value, setValue] = useState("");
   const [isSending, setIsSending] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
+  const previousMessageCountRef = useRef(messages.length);
 
   useEffect(() => {
     const container = scrollContainerRef.current;
     if (!container) return;
+    const hasNewMessage = messages.length > previousMessageCountRef.current;
+    previousMessageCountRef.current = messages.length;
+    if (!hasNewMessage) return;
     container.scrollTop = container.scrollHeight;
-  }, [messages]);
+  }, [messages.length]);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -49,7 +53,7 @@ export function ChatRoom({ role, messages, displayNameByRole, onSend }: ChatRoom
             {messages.map((message) => (
               <li key={message.id} className="rounded bg-white p-2 text-slate-800">
                 <p className={`font-medium ${message.senderRole === "agent" ? "text-indigo-700" : ""}`}>
-                  {displayNameByRole[message.senderRole]}
+                  {message.senderName ?? displayNameByRole[message.senderRole]}
                 </p>
                 <p className="whitespace-pre-wrap">{message.content}</p>
               </li>

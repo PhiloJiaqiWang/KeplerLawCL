@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { AgentController } from "@/components/AgentController";
+import { AgentRoleController } from "@/components/AgentRoleController";
 import { ChatRoom } from "@/components/ChatRoom";
 import { DeveloperPanel } from "@/components/DeveloperPanel";
 import { EventLogger } from "@/components/EventLogger";
@@ -10,11 +10,12 @@ import { SimulationRunner } from "@/components/SimulationRunner";
 import { StagePanel } from "@/components/StagePanel";
 import { StagePlaceholder } from "@/components/StagePlaceholder";
 import { WORKFLOW_V2_ENABLED } from "@/lib/flags";
+import { agentNameByRole } from "@/lib/agentRoles";
 import { getMaxMeasurementsForSimulation } from "@/lib/measurementLimits";
 import type { OpenAIDebugTrace } from "@/agents/debug";
 import type { OpenAIStatus } from "@/agents/status";
 import type {
-  AgentCondition,
+  AgentRole,
   MeasurementPoint,
   MeasurementTarget,
   ParticipantRole,
@@ -170,13 +171,13 @@ export function RoomManager({ roomId, role }: RoomManagerProps) {
     await loadRoom();
   };
 
-  const setAgentCondition = async (condition: AgentCondition) => {
-    const response = await fetch(`/api/rooms/${roomId}/agent`, {
+  const setAgentRole = async (agentRole: AgentRole) => {
+    const response = await fetch(`/api/rooms/${roomId}/agent-role`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ condition }),
+      body: JSON.stringify({ agentRole }),
     });
-    if (!response.ok) throw new Error("Agent update failed");
+    if (!response.ok) throw new Error("Agent role update failed");
     await loadRoom();
   };
 
@@ -266,7 +267,7 @@ export function RoomManager({ roomId, role }: RoomManagerProps) {
   const displayNameByRole: Record<SenderRole, string> = {
     participantA: room.participantA?.name ?? "Participant A",
     participantB: room.participantB?.name ?? "Participant B",
-    agent: room.agentCondition === "Type3" ? "Lyra" : "NOVA",
+    agent: agentNameByRole[room.agentRole],
   };
   const missionLabelBySimulation: Record<SimulationType, string> = {
     "Kepler First Law": "Mission 1: Kepler First Law",
@@ -362,7 +363,7 @@ export function RoomManager({ roomId, role }: RoomManagerProps) {
         >
           Developer Mode {developerMode ? "On" : "Off"}
         </button>
-        <AgentController value={room.agentCondition} onChange={setAgentCondition} />
+        <AgentRoleController value={room.agentRole} onChange={setAgentRole} />
       </header>
 
       <main className="grid min-h-0 flex-1 grid-cols-1 gap-4 p-4 lg:grid-cols-3">

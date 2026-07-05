@@ -1,11 +1,10 @@
 import type { EventLog, RoomState } from "@/lib/types";
 
 type SummaryDeps = {
-  appendChat: (room: RoomState, content: string) => void;
   appendEvent: (room: RoomState, event: EventLog) => void;
 };
 
-type MonitorTrigger = "message" | "activity";
+type MonitorTrigger = "message" | "measurement";
 
 export const runControlSummaryOnStuckIfNeeded = (
   _room: RoomState,

@@ -1,5 +1,6 @@
 import stuckRulesJson from "@/agents/config/stuckRules.json";
 import { requestOpenAIJson } from "@/agents/openai";
+import { agentNameByRole } from "@/lib/agentRoles";
 import type { MonitorDecision, ParticipantRole, RoomState } from "@/lib/types";
 
 type MonitorCategory = NonNullable<MonitorDecision["category"]>;
@@ -20,7 +21,10 @@ export const getParticipantLabel = (room: RoomState, role: ParticipantRole) =>
     : (room.participantB?.name?.trim() || "Participant B");
 
 export const getSenderLabel = (room: RoomState, role: string) =>
-  isParticipantRole(role) ? getParticipantLabel(room, role) : room.agentCondition === "Type3" ? "Lyra" : "NOVA";
+  isParticipantRole(role) ? getParticipantLabel(room, role) : agentNameByRole[room.agentRole];
+
+const getMessageSenderLabel = (room: RoomState, message: { senderRole: string; senderName?: string }) =>
+  message.senderRole === "agent" && message.senderName ? message.senderName : getSenderLabel(room, message.senderRole);
 
 const getParticipantMessages = (room: RoomState) =>
   room.chatMessages.filter((message) => isParticipantRole(message.senderRole));
@@ -67,11 +71,19 @@ const buildDetectionKey = (room: RoomState, ruleId: string | null) => {
 export const buildConversationWindow = (room: RoomState) => {
   const recentMessages = room.chatMessages.slice(-MONITOR_MESSAGE_WINDOW);
   const participantMessages = recentMessages.filter((message) => message.senderRole !== "agent");
-  const counts = participantMessages.reduce(
+  const participantMessageCounts = participantMessages.reduce(
     (acc, message) => {
       if (isParticipantRole(message.senderRole)) {
         acc[message.senderRole] += 1;
       }
+      return acc;
+    },
+    { participantA: 0, participantB: 0 },
+  );
+  const recentMeasurements = getAllMeasurements(room).slice(-MONITOR_MEASUREMENT_WINDOW);
+  const participantMeasurementCounts = recentMeasurements.reduce(
+    (acc, measurement) => {
+      acc[measurement.role] += 1;
       return acc;
     },
     { participantA: 0, participantB: 0 },
@@ -81,30 +93,52 @@ export const buildConversationWindow = (room: RoomState) => {
   const latestParticipantActivityElapsedSeconds = latestActivity
     ? Math.max(0, Math.floor((toTimestamp(currentTimestamp) - toTimestamp(latestActivity.createdAt)) / 1000))
     : null;
+  const recentLearnerActions = [
+    ...getParticipantMessages(room).map((message) => ({
+      kind: "message" as const,
+      role: message.senderRole,
+      createdAt: message.createdAt,
+    })),
+    ...getAllMeasurements(room).map((measurement) => ({
+      kind: "measurement" as const,
+      role: measurement.role,
+      createdAt: measurement.createdAt,
+    })),
+  ]
+    .sort((left, right) => toTimestamp(left.createdAt) - toTimestamp(right.createdAt))
+    .slice(-20);
+  const recentActionGapsSeconds = recentLearnerActions.slice(1).map((action, index) => ({
+    from: recentLearnerActions[index].createdAt,
+    to: action.createdAt,
+    elapsedSeconds: Math.max(
+      0,
+      Math.floor((toTimestamp(action.createdAt) - toTimestamp(recentLearnerActions[index].createdAt)) / 1000),
+    ),
+  }));
 
   return {
     currentTimestamp,
     stage: room.progressBySimulation[room.currentSimulation].currentStage,
     currentActivity: room.currentActivity,
     currentSimulation: room.currentSimulation,
-    participantMessageCounts: counts,
+    participantMessageCounts,
+    participantMeasurementCounts,
     participantLabels: {
       participantA: getParticipantLabel(room, "participantA"),
       participantB: getParticipantLabel(room, "participantB"),
     },
     latestParticipantActivity: latestActivity,
     latestParticipantActivityElapsedSeconds,
-    recentMeasurements: getAllMeasurements(room)
-      .slice(-MONITOR_MEASUREMENT_WINDOW)
-      .map((measurement) => ({
-        role: getParticipantLabel(room, measurement.role),
-        point: measurement.point,
-        target: measurement.target,
-        tool: measurement.tool ?? null,
-        createdAt: measurement.createdAt,
-      })),
+    recentActionGapsSeconds,
+    recentMeasurements: recentMeasurements.map((measurement) => ({
+      role: getParticipantLabel(room, measurement.role),
+      point: measurement.point,
+      target: measurement.target,
+      tool: measurement.tool ?? null,
+      createdAt: measurement.createdAt,
+    })),
     recentMessages: recentMessages.map((message) => ({
-      sender: getSenderLabel(room, message.senderRole),
+      sender: getMessageSenderLabel(room, message),
       createdAt: message.createdAt,
       content: message.content,
     })),
@@ -118,15 +152,18 @@ export const hasMinimumParticipation = (room: RoomState) => hasBothParticipants(
 export const monitorConversation = async (room: RoomState): Promise<MonitorDecision | null> => {
   const systemPrompt = [
     "You are NOVA's collaboration monitor.",
-    "Decide whether the recent collaboration is stuck according to the supplied rules.",
+    "Decide whether the recent collaboration is stuck according to the supplied stuck types and detection rules.",
     "Use only the supplied evidence window, including timestamps, recent chat, recent measurements, and participation counts.",
     "Treat measurement activity as active collaboration.",
     "For inactivity, compare the current timestamp against the latest participant activity timestamp.",
-    "Distinguish conceptual trouble, strategic trouble, and collaborative trouble based on the supplied rule categories.",
-    "Be conservative: only mark stuck when a supplied rule is clearly present.",
-    "Return JSON only with keys stuck, ruleId, category, confidence, rationale.",
+    "Distinguish Conceptual Problem, Collaborative Problem, and Emotional Problem based on the supplied categories.",
+    "Be conservative: only mark stuck when a supplied detection rule is clearly present.",
+    "Return JSON only with keys stuck, ruleId, category, confidence, briefSummary, conceptFocus, rationale.",
     "ruleId must be one of the supplied rule ids or null.",
     "category must be one of the supplied rule categories or null.",
+    "briefSummary must briefly describe what the stuck situation is about in fewer than 10 words when stuck is true, otherwise null.",
+    "conceptFocus must identify the specific learning concept causing difficulty only when category is Conceptual Problem, otherwise null.",
+    "Keep conceptFocus concise, preferably 2-6 words, such as ellipse focus relationship, equal areas, period-axis relationship, or proportional powers.",
   ].join(" ");
 
   const userPrompt = [
@@ -161,6 +198,11 @@ export const monitorConversation = async (room: RoomState): Promise<MonitorDecis
   return {
     ...decision,
     category: decision.category ?? (decision.ruleId ? ruleCategoryById.get(decision.ruleId) ?? null : null),
+    conceptFocus:
+      (decision.category ?? (decision.ruleId ? ruleCategoryById.get(decision.ruleId) ?? null : null)) ===
+      "Conceptual Problem"
+        ? decision.conceptFocus ?? decision.briefSummary ?? null
+        : null,
     detectionKey: buildDetectionKey(room, decision.ruleId),
   };
 };

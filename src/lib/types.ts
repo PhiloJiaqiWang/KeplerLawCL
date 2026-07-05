@@ -9,13 +9,15 @@ export type ParticipantSlot = {
 
 export type Activity = "Orientation" | "Simulation" | "Debrief";
 export type Stage = "Planning" | "Investigation" | "Discussion" | "Submission";
-export type AgentCondition = "No agent" | "Reflective" | "Adaptive" | "Type3";
 export type SimulationType = "Kepler First Law" | "Kepler Second Law" | "Kepler Third Law";
+export type AgentRole = "Facilitator" | "Knowledgeable peer" | "Novice peer";
 export type MonitorDecision = {
   stuck: boolean;
   ruleId: string | null;
-  category?: "Conceptual trouble" | "Strategic trouble" | "Collaborative trouble" | null;
+  category?: "Conceptual Problem" | "Collaborative Problem" | "Emotional Problem" | null;
   confidence: "low" | "medium" | "high";
+  briefSummary?: string | null;
+  conceptFocus?: string | null;
   rationale: string;
   detectionKey?: string;
 };
@@ -23,6 +25,7 @@ export type MonitorDecision = {
 export type ChatMessage = {
   id: string;
   senderRole: SenderRole;
+  senderName?: string;
   content: string;
   createdAt: string;
 };
@@ -79,23 +82,14 @@ export type RoomState = {
   participantB: ParticipantSlot | null;
   currentActivity: Activity;
   currentSimulation: SimulationType;
+  agentRole: AgentRole;
+  pendingAgentResponse: {
+    kind: "awaiting_explanations";
+    agentRole: AgentRole;
+    monitorDecision: MonitorDecision;
+    requestedAt: string;
+  } | null;
   progressBySimulation: Record<SimulationType, SimulationProgress>;
-  agentCondition: AgentCondition;
-  pendingAgentFollowUp:
-    | {
-        kind: "adaptive_support";
-        monitorDecision: MonitorDecision;
-        requestedAt: string;
-        explanationMessageLimit: number;
-        explanationTimeoutMs: number;
-      }
-    | {
-        kind: "type3_hint";
-        monitorDecision: MonitorDecision;
-        requestedAt: string;
-        explanationMessageLimit: number;
-      }
-    | null;
   chatMessages: ChatMessage[];
   eventLogs: EventLog[];
 };

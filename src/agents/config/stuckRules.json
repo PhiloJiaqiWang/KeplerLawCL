@@ -2,60 +2,59 @@
   "version": 1,
   "rules": [
     {
-      "category": "Collaborative trouble",
+      "category": "Collaborative Problem",
       "id": "inactivity_3min",
-      "label": "Inactivity for 3 minutes",
-      "definition": "Neither participant has taken a visible action for at least three minutes. Visible activity includes chat messages and measurement actions.",
+      "label": "No interaction for more than 3 minutes",
+      "definition": "Neither learner has taken a visible collaborative action for more than three minutes. Visible activity includes learner chat messages and measurement actions.",
       "monitorSignals": [
-        "No participant chat messages for at least three minutes.",
-        "No new measurements for at least three minutes.",
-        "Measurement activity counts as active collaboration even if the chat is quiet."
+        "No learner chat messages for more than three minutes.",
+        "No completed measurements for more than three minutes."
       ]
     },
     {
-      "category": "Collaborative trouble",
+      "category": "Collaborative Problem",
       "id": "unbalanced_participation",
       "label": "Unbalanced participation",
-      "definition": "One participant is carrying most of the visible contribution while the other contributes little or mostly minimal acknowledgements.",
+      "definition": "One learner carries most of the visible contribution while the other contributes little, mostly minimal acknowledgements, or few measurements.",
       "monitorSignals": [
-        "One participant contributes substantially more turns than the other.",
-        "The quieter participant mostly sends short acknowledgements or almost nothing.",
-        "The exchange does not show shared contribution."
+        "One learner contributes substantially more chat turns or measurements than the other.",
+        "The quieter learner mostly sends short acknowledgements or almost nothing."
       ]
     },
     {
-      "category": "Conceptual trouble",
-      "id": "shared_conceptual_confusion",
-      "label": "Shared confusion about concepts",
-      "definition": "Both participants express uncertainty about the same scientific concept, interpretation, or meaning, and the conversation does not resolve it.",
+      "category": "Conceptual Problem",
+      "id": "shared_conceptual_uncertainty",
+      "label": "Shared uncertainty about the concept",
+      "definition": "The group demonstrates difficulty understanding or reasoning about the learning content because both learners are uncertain about the underlying concept.",
       "monitorSignals": [
-        "Both participants signal confusion, uncertainty, or not knowing.",
-        "Their uncertainty is about the same concept, meaning, or interpretation.",
-        "The exchange remains unresolved instead of converging on a clearer conceptual understanding."
+        "Both learners signal uncertainty, confusion, or not knowing about the same learning concept."
       ]
     },
     {
-      "category": "Strategic trouble",
-      "id": "shared_strategy_confusion",
-      "label": "Shared confusion about strategy",
-      "definition": "Both participants are unsure about the same next step, measurement plan, or problem-solving strategy, and the conversation does not resolve it.",
+      "category": "Conceptual Problem",
+      "id": "unresolved_conceptual_disagreement",
+      "label": "Unresolved conceptual disagreement",
+      "definition": "Learners disagree about the learning content, interpretation, or reasoning, and the disagreement remains unresolved.",
       "monitorSignals": [
-        "Both participants signal uncertainty about what to do next.",
-        "Their uncertainty is about the same plan, strategy, or measurement choice.",
-        "The exchange remains unresolved instead of converging on a next step."
+        "Learners offer conflicting interpretations of the concept or evidence."
+      ]
+    },
+    {
+      "category": "Emotional Problem",
+      "id": "negative_emotion",
+      "label": "Negative emotion or tension",
+      "definition": "Negative emotions interfere with productive collaboration, including frustration, anxiety, low confidence, tension, or giving up.",
+      "monitorSignals": [
       ]
     }
   ],
   "decisionGuidance": {
     "shouldFlagIf": [
-      "At least one rule is clearly present in the recent collaboration activity.",
-      "The pattern is likely to block progress or weaken collaboration."
+      "At least one detection rule is clearly present in the recent conversation or measurement activity.",
+      "The pattern is likely to block productive learning, collaboration, or emotional regulation."
     ],
     "shouldNotFlagIf": [
-      "The partners are already recovering on their own.",
-      "The collaboration is active because they are still sending messages or taking measurements.",
-      "Only one participant is uncertain, or both are uncertain about different things.",
-      "The uncertainty is brief and the partners quickly recover with a clear next step or clearer understanding."
+      "The partners are already recovering on their own."
     ]
   }
 }

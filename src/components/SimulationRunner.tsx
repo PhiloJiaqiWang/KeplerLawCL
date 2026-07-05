@@ -557,9 +557,6 @@ export function SimulationRunner({
             <text x="350" y="123" fontSize="9" fill="#1e293b">O5</text>
             <text x="362" y="138" fontSize="9" fill="#1e293b">O6</text>
           </svg>
-          <p className="mt-2 text-xs text-slate-600">
-            Measure period and semi-major axis across multiple orbits, then compare whether P² scales with a³.
-          </p>
           {currentStage !== "Investigation" ? (
             <p className="mt-1 text-xs text-amber-700">Measurements unlock when stage reaches Investigation.</p>
           ) : null}

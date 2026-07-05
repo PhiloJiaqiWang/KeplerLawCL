@@ -24,8 +24,8 @@ export function StagePanel({
   const [q1, setQ1] = useState("");
   const [q2, setQ2] = useState("");
   const [showProceedWarning, setShowProceedWarning] = useState(false);
-  const [thirdLawXPower, setThirdLawXPower] = useState<1 | 2 | 3>(3);
-  const [thirdLawYPower, setThirdLawYPower] = useState<1 | 2 | 3>(2);
+  const [thirdLawXPower, setThirdLawXPower] = useState<1 | 2 | 3>(1);
+  const [thirdLawYPower, setThirdLawYPower] = useState<1 | 2 | 3>(1);
   const [isProceeding, setIsProceeding] = useState(false);
   const [isSubmittingDiscussion, setIsSubmittingDiscussion] = useState(false);
   const [error, setError] = useState("");
@@ -317,6 +317,12 @@ export function StagePanel({
                   <p>
                     NOVA has unlocked multiple planetary orbits around the same star. Investigate how orbital size
                     relates to orbital period across different planets.
+                  </p>
+                  <p className="mt-2 font-medium">Both participants can use:</p>
+                  <p className="mt-2">
+                    <code>Period Tool</code> (measures how long a selected planet takes to complete one orbit).
+                    <br />
+                    <code>Axis Tool</code> (measures the selected orbit&apos;s semi-major axis).
                   </p>
                   <p className="mt-2">Before Investigation, align on:</p>
                   <ul className="mt-1 list-disc pl-5">

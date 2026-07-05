@@ -1,7 +1,8 @@
 import { randomUUID } from "node:crypto";
-import { runControlSummaryOnStuckIfNeeded, runFacilitatorIfNeeded } from "@/agents";
+import { runControlSummaryOnStuckIfNeeded, runStuckMonitorIfNeeded } from "@/agents";
+import { agentIntroductionByRole, agentNameByRole } from "@/lib/agentRoles";
 import {
-  type AgentCondition,
+  type AgentRole,
   type ChatMessage,
   type EventLog,
   type MeasurementPoint,
@@ -21,8 +22,6 @@ import { prisma } from "@/lib/prisma";
 
 const rooms = new Map<string, RoomState>();
 const initialStage: Stage = "Planning";
-const TYPE3_INTRO_MESSAGE =
-  "Hi, I’m Lyra—another survivor. I think I accidentally connected to this channel after the blackout. I’ll try to figure things out with you.";
 export { MAX_MEASUREMENTS_PER_SIMULATION, MAX_MEASUREMENTS_THIRD_LAW, getMaxMeasurementsForSimulation };
 
 const createInitialProgress = (): RoomState["progressBySimulation"] => ({
@@ -120,6 +119,7 @@ const addAgentChat = (room: RoomState, content: string) => {
   const message: ChatMessage = {
     id: randomUUID(),
     senderRole: "agent",
+    senderName: agentNameByRole[room.agentRole],
     content,
     createdAt: new Date().toISOString(),
   };
@@ -127,11 +127,18 @@ const addAgentChat = (room: RoomState, content: string) => {
   void persistChatToPostgres(room.roomId, message);
 };
 
-const hasType3Introduction = (room: RoomState) =>
-  room.chatMessages.some((message) => message.senderRole === "agent" && message.content === TYPE3_INTRO_MESSAGE);
+const addAgentIntroductionIfNeeded = (room: RoomState, agentRole: AgentRole) => {
+  const introduction = agentIntroductionByRole[agentRole];
+  const alreadyIntroduced = room.chatMessages.some(
+    (message) => message.senderRole === "agent" && message.content === introduction,
+  );
+  if (!alreadyIntroduced) {
+    addAgentChat(room, introduction);
+  }
+};
 
-const runRoomMonitors = (room: RoomState, trigger: "message" | "activity") => {
-  runFacilitatorIfNeeded(
+const runRoomMonitors = (room: RoomState, trigger: "message" | "measurement") => {
+  runStuckMonitorIfNeeded(
     room,
     {
       appendChat: addAgentChat,
@@ -142,7 +149,6 @@ const runRoomMonitors = (room: RoomState, trigger: "message" | "activity") => {
   runControlSummaryOnStuckIfNeeded(
     room,
     {
-      appendChat: addAgentChat,
       appendEvent: addEvent,
     },
     trigger,
@@ -161,15 +167,16 @@ export const createOrGetRoom = (roomId: string): RoomState => {
     participantB: null,
     currentActivity: "Orientation",
     currentSimulation: "Kepler First Law",
+    agentRole: "Facilitator",
+    pendingAgentResponse: null,
     progressBySimulation: createInitialProgress(),
-    agentCondition: "No agent",
-    pendingAgentFollowUp: null,
     chatMessages: [],
     eventLogs: [],
   };
 
   rooms.set(roomId, room);
   addEvent(room, defaultEvent(roomId));
+  addAgentIntroductionIfNeeded(room, room.agentRole);
   return room;
 };
 
@@ -244,25 +251,17 @@ export const postMessage = (roomId: string, role: ParticipantRole, content: stri
   return room;
 };
 
-export const updateAgentCondition = (roomId: string, condition: AgentCondition): RoomState => {
+export const updateAgentRole = (roomId: string, agentRole: AgentRole): RoomState => {
   const room = createOrGetRoom(roomId);
-  room.agentCondition = condition;
-  room.pendingAgentFollowUp = null;
+  room.agentRole = agentRole;
+  room.pendingAgentResponse = null;
+  addAgentIntroductionIfNeeded(room, agentRole);
   addEvent(room, {
     id: randomUUID(),
     type: "SYSTEM",
-    message: `Agent condition changed to ${condition}.`,
+    message: `Agent role changed to ${agentRole}.`,
     createdAt: new Date().toISOString(),
   });
-  if (condition === "Type3" && !hasType3Introduction(room)) {
-    addAgentChat(room, TYPE3_INTRO_MESSAGE);
-    addEvent(room, {
-      id: randomUUID(),
-      type: "ROOM",
-      message: "Lyra introduced herself after Type3 was enabled.",
-      createdAt: new Date().toISOString(),
-    });
-  }
   return room;
 };
 
@@ -275,7 +274,6 @@ export const updateSimulation = (roomId: string, simulation: SimulationType): Ro
     message: `Simulation changed to ${simulation}.`,
     createdAt: new Date().toISOString(),
   });
-  runRoomMonitors(room, "activity");
   return room;
 };
 
@@ -327,7 +325,6 @@ export const submitPlan = (
       createdAt: new Date().toISOString(),
     });
   }
-  runRoomMonitors(room, "activity");
   return room;
 };
 
@@ -467,7 +464,7 @@ export const addMeasurement = (
       message: `${role} measured ${tool} on ${orbit}: ${value.toFixed(2)} ${valueUnit}`,
       createdAt: new Date().toISOString(),
     });
-    runRoomMonitors(room, "activity");
+    runRoomMonitors(room, "measurement");
     return room;
   }
 
@@ -510,7 +507,7 @@ export const addMeasurement = (
         message: `${role} measured speed at ${point} (${speedInterval}s): ${speed.toFixed(2)} u/s`,
         createdAt: new Date().toISOString(),
       });
-      runRoomMonitors(room, "activity");
+      runRoomMonitors(room, "measurement");
       return room;
     }
 
@@ -536,7 +533,7 @@ export const addMeasurement = (
       message: `${role} measured swept area at ${point} (${interval}s): ${area.toFixed(2)} u^2`,
       createdAt: new Date().toISOString(),
     });
-    runRoomMonitors(room, "activity");
+    runRoomMonitors(room, "measurement");
     return room;
   }
 
@@ -568,7 +565,7 @@ export const addMeasurement = (
     message: `${role} measured ${point} -> ${target}: ${distance.toFixed(1)}`,
     createdAt: new Date().toISOString(),
   });
-  runRoomMonitors(room, "activity");
+  runRoomMonitors(room, "measurement");
   return room;
 };
 
@@ -587,7 +584,6 @@ export const advanceToDiscussion = (roomId: string): RoomState => {
     message: `${simulation} advanced to Discussion.`,
     createdAt: new Date().toISOString(),
   });
-  runRoomMonitors(room, "activity");
   return room;
 };
 
@@ -631,6 +627,5 @@ export const submitDiscussionAnswers = (
       createdAt: new Date().toISOString(),
     });
   }
-  runRoomMonitors(room, "activity");
   return room;
 };
