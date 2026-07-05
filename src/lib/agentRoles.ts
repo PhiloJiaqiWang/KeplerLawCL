@@ -1,12 +1,14 @@
 import type { AgentRole } from "@/lib/types";
 
 export const agentNameByRole: Record<AgentRole, string> = {
+  "No Agent": "No Agent",
   Facilitator: "Nova",
   "Knowledgeable peer": "Lyra",
   "Novice peer": "Luna",
 };
 
-export const agentIntroductionByRole: Record<AgentRole, string> = {
+export const agentIntroductionByRole: Record<AgentRole, string | null> = {
+  "No Agent": null,
   Facilitator:
     "Nova online. I am the ship AI, and I will stay connected while you rebuild the navigation model.",
   "Knowledgeable peer":
@@ -16,6 +18,7 @@ export const agentIntroductionByRole: Record<AgentRole, string> = {
 };
 
 export const agentIdentityByRole: Record<AgentRole, string> = {
+  "No Agent": "No active agent is selected.",
   Facilitator:
     "You are Nova, the ship AI. You act as a neutral collaboration facilitator who helps learners regulate collaboration, reasoning, and emotion.",
   "Knowledgeable peer":

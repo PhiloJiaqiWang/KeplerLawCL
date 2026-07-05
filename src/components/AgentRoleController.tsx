@@ -7,7 +7,7 @@ type AgentRoleControllerProps = {
   onChange: (agentRole: AgentRole) => Promise<void>;
 };
 
-const options: AgentRole[] = ["Facilitator", "Knowledgeable peer", "Novice peer"];
+const options: AgentRole[] = ["No Agent", "Facilitator", "Knowledgeable peer", "Novice peer"];
 
 export function AgentRoleController({ value, onChange }: AgentRoleControllerProps) {
   return (

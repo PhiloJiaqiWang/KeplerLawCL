@@ -4,7 +4,7 @@ export const runtime = "nodejs";
 import { updateAgentRole } from "@/lib/roomStore";
 import type { AgentRole } from "@/lib/types";
 
-const validAgentRoles: AgentRole[] = ["Facilitator", "Knowledgeable peer", "Novice peer"];
+const validAgentRoles: AgentRole[] = ["No Agent", "Facilitator", "Knowledgeable peer", "Novice peer"];
 
 export async function POST(req: Request, context: { params: Promise<{ roomId: string }> }) {
   const { roomId } = await context.params;

@@ -10,7 +10,7 @@ type MonitorDeps = {
   appendEvent: (room: RoomState, event: EventLog) => void;
 };
 
-type MonitorTrigger = "message" | "measurement";
+type MonitorTrigger = "message" | "measurement" | "inactivity";
 
 const MONITOR_COOLDOWN_MS = 60 * 1000;
 const lastMonitorAtByRoom = new Map<string, number>();
@@ -53,6 +53,7 @@ export const runStuckMonitorIfNeeded = (
   trigger: MonitorTrigger = "message",
 ) => {
   if (!hasOpenAIKey()) return;
+  if (room.agentRole === "No Agent") return;
   if (!hasBothParticipants(room)) return;
   if (!hasMinimumParticipation(room)) return;
   if (inFlightByRoom.has(room.roomId)) return;

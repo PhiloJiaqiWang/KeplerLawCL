@@ -349,6 +349,7 @@ export function SimulationRunner({
               const accessible = canAccessSide(point.side);
               const clickable = currentStage === "Investigation" && accessible && point.side !== "neutral";
               const selected = selectedIds.includes(point.id);
+              const labelX = point.id === "f1" ? point.x - 55 : point.x + 7;
               return (
                 <g
                   key={point.id}
@@ -361,7 +362,7 @@ export function SimulationRunner({
                     r={selected ? 6 : point.side === "neutral" ? 4 : 5}
                     fill={selected ? "#dc2626" : accessible ? "#0f172a" : "#94a3b8"}
                   />
-                  <text x={point.x + 7} y={point.y - 7} fontSize="10" fill={accessible ? "#1e293b" : "#94a3b8"}>
+                  <text x={labelX} y={point.y - 7} fontSize="10" fill={accessible ? "#1e293b" : "#94a3b8"}>
                     {point.displayLabel ?? point.label}
                   </text>
                 </g>
@@ -463,6 +464,7 @@ export function SimulationRunner({
               const accessible = canAccessSide(point.side);
               const clickable = currentStage === "Investigation" && accessible && point.side !== "neutral";
               const selected = selectedIds.includes(point.id);
+              const labelX = point.id === "f1" ? point.x - 55 : point.x + 7;
               return (
                 <g
                   key={point.id}
@@ -475,7 +477,7 @@ export function SimulationRunner({
                     r={selected ? 6 : point.side === "neutral" ? 4 : 5}
                     fill={selected ? "#dc2626" : accessible ? "#0f172a" : "#94a3b8"}
                   />
-                  <text x={point.x + 7} y={point.y - 7} fontSize="10" fill={accessible ? "#1e293b" : "#94a3b8"}>
+                  <text x={labelX} y={point.y - 7} fontSize="10" fill={accessible ? "#1e293b" : "#94a3b8"}>
                     {point.displayLabel ?? point.label}
                   </text>
                 </g>

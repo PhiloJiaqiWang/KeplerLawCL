@@ -22,6 +22,8 @@ import { prisma } from "@/lib/prisma";
 
 const rooms = new Map<string, RoomState>();
 const initialStage: Stage = "Planning";
+const INACTIVITY_MONITOR_DELAY_MS = 3 * 60 * 1000;
+const inactivityMonitorTimeoutByRoom = new Map<string, ReturnType<typeof setTimeout>>();
 export { MAX_MEASUREMENTS_PER_SIMULATION, MAX_MEASUREMENTS_THIRD_LAW, getMaxMeasurementsForSimulation };
 
 const createInitialProgress = (): RoomState["progressBySimulation"] => ({
@@ -129,6 +131,7 @@ const addAgentChat = (room: RoomState, content: string) => {
 
 const addAgentIntroductionIfNeeded = (room: RoomState, agentRole: AgentRole) => {
   const introduction = agentIntroductionByRole[agentRole];
+  if (!introduction) return;
   const alreadyIntroduced = room.chatMessages.some(
     (message) => message.senderRole === "agent" && message.content === introduction,
   );
@@ -153,6 +156,30 @@ const runRoomMonitors = (room: RoomState, trigger: "message" | "measurement") =>
     },
     trigger,
   );
+  scheduleInactivityMonitor(room);
+};
+
+const scheduleInactivityMonitor = (room: RoomState) => {
+  const existingTimeout = inactivityMonitorTimeoutByRoom.get(room.roomId);
+  if (existingTimeout) {
+    clearTimeout(existingTimeout);
+  }
+
+  const timeout = setTimeout(() => {
+    inactivityMonitorTimeoutByRoom.delete(room.roomId);
+    const latestRoom = rooms.get(room.roomId);
+    if (!latestRoom) return;
+    runStuckMonitorIfNeeded(
+      latestRoom,
+      {
+        appendChat: addAgentChat,
+        appendEvent: addEvent,
+      },
+      "inactivity",
+    );
+  }, INACTIVITY_MONITOR_DELAY_MS);
+
+  inactivityMonitorTimeoutByRoom.set(room.roomId, timeout);
 };
 
 export const createOrGetRoom = (roomId: string): RoomState => {
@@ -167,7 +194,7 @@ export const createOrGetRoom = (roomId: string): RoomState => {
     participantB: null,
     currentActivity: "Orientation",
     currentSimulation: "Kepler First Law",
-    agentRole: "Facilitator",
+    agentRole: "No Agent",
     pendingAgentResponse: null,
     progressBySimulation: createInitialProgress(),
     chatMessages: [],
@@ -207,7 +234,10 @@ export const joinRole = (roomId: string, role: ParticipantRole, name: string): R
       message: `${normalizedName} rejoined as ${role}.`,
       createdAt: new Date().toISOString(),
     });
-        return room;
+    if (room.participantA && room.participantB) {
+      scheduleInactivityMonitor(room);
+    }
+    return room;
   }
 
   const participant: ParticipantSlot = {
@@ -224,7 +254,10 @@ export const joinRole = (roomId: string, role: ParticipantRole, name: string): R
     createdAt: new Date().toISOString(),
   });
 
-    return room;
+  if (room.participantA && room.participantB) {
+    scheduleInactivityMonitor(room);
+  }
+  return room;
 };
 
 export const postMessage = (roomId: string, role: ParticipantRole, content: string): RoomState => {

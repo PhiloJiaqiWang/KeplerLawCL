@@ -10,7 +10,7 @@ export type ParticipantSlot = {
 export type Activity = "Orientation" | "Simulation" | "Debrief";
 export type Stage = "Planning" | "Investigation" | "Discussion" | "Submission";
 export type SimulationType = "Kepler First Law" | "Kepler Second Law" | "Kepler Third Law";
-export type AgentRole = "Facilitator" | "Knowledgeable peer" | "Novice peer";
+export type AgentRole = "No Agent" | "Facilitator" | "Knowledgeable peer" | "Novice peer";
 export type MonitorDecision = {
   stuck: boolean;
   ruleId: string | null;
